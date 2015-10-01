@@ -1,0 +1,125 @@
+	Installing the Linux executables for IMACS mask generation
+
+This is the distribution of executable Linux software for making 
+I.M.A.C.S. slit masks.  This distribution consists of:
+
+Executable Linux binaries:
+	intgui  maskgen  maskcut  ncplot  smdfplt 
+Data files used by the above:
+	opticdef.dat  maskcut.cfg  pmap.dat
+Documentation
+	README (this file) how to install the software
+	mginstr.txt  how to use the software
+	faq.txt      Frequently Asked Questions (read before asking)
+	catdata.txt  example of and explanation of object catalog data
+	obsfile.txt  explains the ".obs" file used by maskgen
+	smdfile.txt  explains the ".SMF" file produced by maskgen
+	config.txt   explains configuration parameters and data files
+Useful scripts
+	getlsi       used to get new distributions (see below)
+	mgclean      deletes files generated from user input
+	obscat       used to create observing catalog entries
+
+In addition to this software distribution, use of "skywin" requires that
+several star catalogs be present, usually in the ./gcats/ directory, or
+a directory of your choice.  Symbolic links to the actual catalogs
+are permitted and recommended, since the actual catalogs take up about
+4.4 Gigabytes of disk, and are often stored on another drive.
+Set the environment name CATPATH to the directory in which these
+star catalogs are installed.
+To get these star catalogs, see below.
+
+The distribution is a compressed tar file, "lsi.tgz", or for Mac-OSX
+a file named "msi.tgz".  Copy it to the directory of your choice, and
+extract the contents using a command of the form:
+    > gtar  xfz  lsi.tgz
+
+The executable programs here will need to be present at least in the
+execution path of each user who will be using them.  Their data files
+will be needed, or a symbolic to them will be needed wherever the user
+is using them.  The best thing to do is to make a symbolic link to the
+distributed data files from /usr/local/etc/ or /usr/local/etc/maskgen/.
+It is very important to link to the place where you unpack new distributions
+so that new data files are used rather than old copies, since changes to
+these files are considered part of the new distribution.  As an alternative, 
+the environment variable "OPTICDEF" may be defined as the directory name 
+where opticdef.dat is stored.  Also, the environment variable "CUTDEF" may 
+be defined as the directory name where maskcut.cfg is stored.  The environment 
+variable "DEFAULTS" may be defined as the directory name where pmap.dat is 
+stored.  And, these needed files or a symbolic link may be in the parent 
+directory of the directory in which the programs are used.  See the file
+"config.txt" for more details.
+
+The distributed programs are executable images, and are linked with 
+dynamic libraries.  Currently libraries needed are:
+	libm	libX11	libc	libpthread	libcurl		libcrypto
+The first 4 should be quite standard, but the last 2 may be
+not yet installed on your system.  You will need to install them, or ask 
+your system manager to do so.  All are distributed with your linux system.
+
+The documentation files may be stored in any location where they can be
+conveniently referred to by users.  PLEASE, please, read the documentation
+files.  Read "faq.txt" before asking those questions again, especially
+the first one.  Really, read it!
+
+All of these programs, data files and documentation are in current
+development.  This distribution is only a snapshot of an evolving set
+of software and information.  Things will change, and new things will
+be added.  Often these changes will be documented, sometimes not.
+Some major changes will be announced, minor ones will not, but the
+file dates will show that things are changing.
+
+Users are encouraged to obtain new distributions in a timely manner,
+at least prior to using the software for making masks to be used in
+any actual observing run.  Fixes and new features appear approximately
+on a monthly basis.  With release 2.0, users are reminded at the start
+of each program whether their software is current or in need of update.
+
+Also, if you experience any problems or errors in using any of the
+programs, get the latest version, distribute the files to their
+locations in your use, and try again.  That way, you can say "yes" 
+when I ask if you have the latest distribution.
+
+The current location for the official distributions of software is:
+	ftp  ftp.obs.carnegiescience.edu
+	user: anonymous
+	binary
+	cd   pub/clardy
+	get  lsi.tgz  (or desired release version*)
+
+The script "getlsi" in this distribution will do this automatically;
+please edit the password field in the script for your institution
+domain name.  The script may then be placed anywhere in your path, and
+run from the directory into which you wish the lsi.tgz file downloaded.
+There is also a distribution msi.tgz for users of the Mac-OS-X system.
+
+*Several versions are available, under names of the form "lsxVX.tgz"
+where in the VX is an Operating System version and CPU hardware
+abbreviation.  The X part is wither "s" for 32 bit CPU or "x" for 64 bit.
+The V part is "r" (redhat 9), "3" (Fedora 3), "5" (Fedora 5), 
+"8" (Fedora 8) or "D" (Fedora 13).  The older ones will probably not
+be available as time goes by...
+
+You can also find some documentation, and pointers to the distribution
+files at:  http://users.obs.carnegiescience.edu/clardy/imacs/maskmaking.html
+
+The star catalogs:
+
+The "skywin" feature of interface GUI uses a set of star catalogs which
+have been slightly compressed and reformatted from the publicly available
+source data.  These are not expected to change at all, which means they
+may be downloaded once and stored in a central location.
+
+The star catalog distribution is over 4 Gigabytes of data.  It is
+possible to download this overnight in two tar files of about 2 
+Gigabytes each.  Downloading takes about 2 hours for each file.  A link
+in the maskmaking.html page (above) will show how to do it.
+
+If you have an internet connection and need to make only a few masks,
+and don't want to download the catalogs, the catalog information is
+available over the internet from obs.canrnegiescience.edu; if local
+catalogs are not found, an internet request will be automatically made,
+and the data saved locally for future use.  This download may take a
+minute or two when done the first time.  Guide stars are absolutely
+required to cut an IMACS mask.
+

@@ -1,0 +1,578 @@
+!  Data file for pmap planning program
+!
+!  ( Version 1.50 )
+!
+!  Ken Clardy, OCIW
+!  2003 August 28
+!  Revised 2004 Jan 22; add imacs chipset
+!  Revised 2004 May 28, Aug. 17 for ADC scale
+!  Revised 2005 June 17 for IMACS detector orientation
+!  Revised 2007 Nov. 13 for Gismo field feature
+!
+!
+!  Telescope data
+!
+!  Data contains these things:
+!    name = name to report in window
+!    longitude = degrees, positive east
+!    latitude = degrees, positive north
+#  telescope Magellan-1
+telescope Baade
+default
+name=MAG-1
+longitude=-70.69239
+latitude=-29.01418
+!
+#  telescope Magellan-2
+! telescope Clay
+! name=MAG-2
+! longitude=-70.69239
+! latitude=-29.01418
+!
+##
+## PLEASE NOTE that the name "LCO100" in the following definition
+##   is used in the gmap program to decide whether to display
+##   position angle as "Cass Position" which is used on the
+##   DuPont telescope only.  DO NOT change this name.
+##
+! telescope DuPont
+! name=LCO100
+! longitude=-70.7
+! latitude=-29.08333
+!
+! telescope Swope
+! name=LCO40
+! longitude=-70.7
+! latitude=-29.08333
+!
+!  NOTE that all these latitude and longitude figures
+!  could be improved with recent GPS values.
+!
+!
+!  Camera data
+!
+!  Data contains these things:
+!    name = displayed identification
+!    nchips = number of chips
+!    choffx1 (1-n) x offset
+!    choffy1 (1-n) y offset
+!    dimx  number of pixels in x
+!    dimy  number of pixels in y
+!    pixscale = size of each pixel in arcseconds
+!
+!  NOTE that scale values will depend on the telescope
+!  focal length when cameras are moved to other locations.
+!
+! #camera  Guider-camera
+! camera  Gdr-cam
+! #default
+! name=GDR
+! nchips=1
+! choffx1=0
+! choffy1=0
+! dimx=1000
+! dimy=1000
+! pixscale=0.092
+!
+! camera  Tek-5
+! name=TEK5
+! nchips=1
+! choffx1=0
+! choffy1=0
+! dimx=2048
+! dimy=2048
+! pixscale=0.259
+!
+! camera  nicmos-3
+! Infrared camera
+! name=NIC3
+! nchips=1
+! choffx1=0
+! choffy1=0
+! dimx=256
+! dimy=256
+! pixscale=0.348
+!
+! camera  Site-1
+! name=SITE1
+! nchips=1
+! choffx1=0
+! choffy1=0
+! dimx=2048
+! dimy=2048
+! pixscale=0.697
+!
+! camera  Site-3
+! name=SITE3
+! nchips=1
+! choffx1=0
+! choffy1=0
+! dimx=2048
+! dimy=3150
+! pixscale=0.435
+!
+#camera  IMACS-long-1
+!
+camera  IMACS-L
+! Full detector approximation
+name=IMACS Long Cam.
+default
+nchips=1
+choffx1=0
+choffy1=0
+dimx=8192
+dimy=8192
+pixscale=0.1132   # Arcsec per pixel
+!
+camera  Gismo
+! Approximate detector field
+name=GISMO field splitter
+nchips=4
+# This is an approximation to GISMO using a
+# single detector patch.
+# Size is adjusted to fill approximate
+# sky region of the Gismo mirrors.
+# This is 39.7 mm wide by 36.147 mm high (X2)
+nchips=1
+choffx1=0
+choffy1=0
+# Pixels/Mask-mm is asec/mm / asec/pixl;
+#  p/m = 206265/71161.1 / 0.1132 = 25.605665
+# x = 39.7 x 2, y = 36.147 x 2
+! dimx=8192
+dimx=2033
+# dimx is adjusted to 39.7X2 mm
+! dimy=8192
+dimy=1851
+# dimy is adjusted to 36.147 mm high X 2
+pixscale=0.1132   # Arcsec per pixel
+!
+!
+camera  N-Gismo
+! 16 subfields of varying size
+name=GISMO field splitter
+nchips=4
+!Change to symmetry set later  (Currently unused)
+! Depends on GISCAM feature in skywin.c
+# Offset in y are
+# Offset in x are
+# Limits in mm:
+#   limit   0     0.548260      39.7037      1.32901      9.08099
+#   limit   1     0.548260      36.5807      10.3510      18.1030
+#   limit   2     0.548260      31.7227      19.3730      27.1250
+#   limit   3     0.548260      21.3127      28.3950      36.1470
+#  Telescope fl = 71161.1 mm
+#  Angular size:  asec = mm x 206265/fl = mm x ls
+#  Pixel size/offset: asec = 0.1132 x pixls
+! Problem is that code assumes all "chips" are same size...
+#  Approximate each quadrant by 0.54826 - 32.3 mm wide,
+#  which is 31.75 wide, centered on 16.43
+#  and 7.75 mm high x 4, or 34.82 mm high total,
+#  centered on 18.74.
+#  For angles, x = 92.03 asec = 813 pixels
+#  centered at 47.62 asec.
+#  Then y = 100.93 asec = 892 pixels
+#  centered on 54.32 asec.
+choffx1=47.62
+choffy1=54.32
+choffx2=-47.62
+choffy2=54.32
+choffx3=-47.62
+choffy3=-54.32
+choffx4=47.62
+choffy4=-54.32
+dimx=813
+dimy=892
+pixscale=0.1132
+!
+!
+camera  Norm-IMACS-L
+! 8 chips of 2048x4096 at normal orientation,
+! And approximate spacing.
+name=IMACS Long Cam.
+# default
+# nchips=1
+# choffx1=0
+# choffy1=0
+nchips=8
+# Offsets in y are 232.40 [ .1132 * ((8192 / 4) + 5) ]
+# Offsets in x are 116.20 and 348.60 [ 1/2 and 3/2 * y offset ]
+choffx1=-348.60
+choffy1=232.40
+choffx2=-116.20
+choffy2=232.40
+choffx3=116.20
+choffy3=232.40
+choffx4=348.60
+choffy4=232.40
+#
+choffx5=-348.60
+choffy5=-232.40
+choffx6=-116.20
+choffy6=-232.40
+choffx7=116.20
+choffy7=-232.40
+choffx8=348.60
+choffy8=-232.40
+#
+# dimx=8192
+# dimy=8192
+dimx=2048  # 1/4 8192
+dimy=4096  # 1/2 8192
+pixscale=0.1132   # Arcsec per pixel
+!
+camera  NS-IMACS-L
+! 8 chips of 2048x4096 at Nod-and-Shuffle orientation,
+! And approximate spacing.
+! This is normal orientation with x,y interchanged
+name=IMACS Long Cam.
+# default
+nchips=8
+# Offsets in x are 232.40 [ .1132 * ((8192 / 4) + 5) ]
+# Offsets in y are 116.20 and 348.60 [ 1/2 and 3/2 * y offset ]
+choffy1=-348.60
+choffx1=232.40
+choffy2=-116.20
+choffx2=232.40
+choffy3=116.20
+choffx3=232.40
+choffy4=348.60
+choffx4=232.40
+#
+choffy5=-348.60
+choffx5=-232.40
+choffy6=-116.20
+choffx6=-232.40
+choffy7=116.20
+choffx7=-232.40
+choffy8=348.60
+choffx8=-232.40
+#
+# dimy=8192
+# dimx=8192
+dimy=2048  # 1/4 8192
+dimx=4096  # 1/2 8192
+pixscale=0.1132   # Arcsec per pixel
+!
+camera  IMACS-S
+! Full detector approximation
+name=IMACS Short Cam.
+nchips=1
+choffx1=0
+choffy1=0
+dimx=8192
+dimy=8192
+pixscale=0.1992   # Arcsec per pixel
+!
+camera  Norm-IMACS-S
+! 8 chips of 2048x4096 at normal orientation,
+! And approximate spacing.
+name=IMACS Short Cam.
+# nchips=1
+# choffx1=0
+# choffy1=0
+nchips=8
+# Offsets in y are 408.96 [ .1992 * ((8192 / 4) + 5) ]
+# Offsets in x are 204.48 and 613.44
+choffx1=-613.44
+choffy1=408.96
+choffx2=-204.48
+choffy2=408.96
+choffx3=204.48
+choffy3=408.96
+choffx4=613.44
+choffy4=408.96
+#
+choffx5=-613.44
+choffy5=-408.96
+choffx6=-204.48
+choffy6=-408.96
+choffx7=204.48
+choffy7=-408.96
+choffx8=613.44
+choffy8=-408.96
+#
+# dimx=8192
+# dimy=8192
+dimx=2048  # 1/4 8192
+dimy=4096  # 1/2 8192
+pixscale=0.1992   # Arcsec per pixel
+!
+camera  NS-IMACS-S
+! 8 chips of 2048x4096 at Nod-and-Shuffle orientation,
+! And approximate spacing.
+! This is the normal orientation with x,y interchanged.
+name=IMACS Short Cam.
+# nchips=1
+# choffx1=0
+# choffy1=0
+nchips=8
+# Offsets in x are 408.96 [ .1992 * ((8192 / 4) + 5) ]
+# Offsets in y are 204.48 and 613.44
+choffy1=-613.44
+choffx1=408.96
+choffy2=-204.48
+choffx2=408.96
+choffy3=204.48
+choffx3=408.96
+choffy4=613.44
+choffx4=408.96
+#
+choffy5=-613.44
+choffx5=-408.96
+choffy6=-204.48
+choffx6=-408.96
+choffy7=204.48
+choffx7=-408.96
+choffy8=613.44
+choffx8=-408.96
+#
+# dimy=8192
+# dimx=8192
+dimy=2048  # 1/4 8192
+dimx=4096  # 1/2 8192
+pixscale=0.1992   # Arcsec per pixel
+!
+!camera  LDSS3
+! 1 chip nominally 4096 square (could be different)
+! x,y extent is 61.44 mm each way
+! Angular size is (61.44/71475.8) x (745.935/173.0758) radians
+! Or in arcmin = 12.736, arcsec = 764.156
+! scale 764.156 / 4095 = 0.1866
+!
+camera LDSS3_NOR
+name=LDSS3_NOR
+nchips=1
+choffx1=0
+choffy1=0
+dimx=2048
+dimy=4096
+pixscale=0.1866
+
+camera LDSS3_MIC
+name=LDSS3_MIC
+nchips=1
+choffx1=0
+choffy1=0
+dimx=4096
+dimy=2048
+pixscale=0.1866
+
+camera LDSS3_MAC
+name=LDSS3_MAC
+nchips=1
+choffx1=0
+choffy1=0
+dimx=1365
+dimy=2048
+pixscale=0.1866
+!
+!
+!  Guider data
+!
+!  Data contains these things:
+!    name = displayed identification
+!    offaxis-x = displacement in x
+!    offaxis-y = displacement in y
+!    field-w = field width of camera in x
+!    field-h = field height of camera in y
+!    unit-x = size of x unit in arc seconds
+!    unit-y = size of y unit in arc seconds
+!    center-x = center coordinate in x?
+!    center-y = center coordinate in y?
+!
+!  For IMACS syle instrument guiders, additional:
+!    nguiders = number of guiders
+#  NOTE that "nguiders" is used to distinguish the two methods
+#  of describing guider fields and motions.  It is undefined
+#  or zero for the older method above.
+!    mode1 = mode:
+!      1 = polar motions
+!      3 = polar and radial motions
+!      0 = rectangular
+!    rlo1, rhi1 = radial range on polar modes
+!    alo1, ahi1 = angle range on polar modes
+!    xlo1, xhi1 = x range on rectangular modes
+!    ylo1, yhi1 = y range on rectangular modes
+!    rot1 = rotation angle of orientation
+!   All values take 1-n subscript
+!    px = pixels in x (and y if not otherwise given)
+!    psize = size in arc seconds
+!    scale = x,y,r movement unit in arc seconds
+!
+! guider  Magellan
+! #default
+! name=MAG
+! offaxis-x=0.
+! offaxis-y=0.
+! field-w=867.0
+! field-h=867.0
+! unit-x=-0.346
+! unit-y=-0.346
+! center-x=0
+! center-y=0
+!
+!
+! guider  IMB
+! ! DuPont Instrument Mounting Base
+! name=IMB
+! offaxis-x=1167.
+! offaxis-y=0.
+! field-w=953.0
+! field-h=2192.8
+! unit-x=-3.65
+! unit-y=-3.65
+! center-x=5900
+! center-y=3900
+!
+!
+! guider  13.5
+! ! Swope at f/13.5
+! name=f/13.5
+! offaxis-x=0.
+! offaxis-y=1150.
+! field-w=1900.
+! field-h=950.
+! unit-x=2.0183
+! unit-y=-2.00363
+! center-x=76  .! Linux crashed here...
+! center-y=1834
+!
+!
+! guider 7.0
+! ! Swope at f/7.0
+! name=f/7
+! offaxis-x=0.
+! offaxis-y=2200.
+! field-w=1900.
+! field-h=950.
+! unit-x=1.04653
+! unit-y=-1.03892
+! center-x=74
+! center-y=1882
+!
+!
+! guider ctio
+! ! Standard default
+! name=std
+! offaxis-x=0.
+! offaxis-y=0.
+! field-w=300.
+! field-h=300.
+! unit-x=1.0
+! unit-y=1.0
+! center-x=0
+! center-y=0
+!
+!
+!  IMACS guider set, new style
+#guider IMACS-set-1
+guider IMACS
+!
+name=IMACS-set
+default
+nguiders=3
+
+# 1 - Primary, polar
+mode1=1
+! Per Tyson Hare 03/5-23:
+! Radius is 15 arcmin = 313.5 mm (904.8)
+! Angles are 70 to 110 degrees
+! Angles further restricted by 1 degree for hardware
+!-rlo1=934.5
+rlo1=923.7
+!-rhi1=934.5
+rhi1=923.7
+!! Angles = 89.98 - (IMACS motion value)
+#alo1=67.68	!.. 66.45   ! 22.3
+alo1=71.38	! 18.6
+# Temporarily restricted 2008/03-29 for a few months per C. Birk.
+ahi1=105.29	!.. 105.75  ! -15.31
+rot1=0.0
+# rot1=120.0
+mag1=16.5
+# mag1=19.0  really
+bmag1=11.0
+
+# 2 - Secondary, polar, SH
+mode2=3
+! Per Tyson Hare 03/5-23:
+! Radius is 14.5 to 16 arcmin = 301.6 mm - 337.3 mm.
+! That translates to 870.8 to 972.7 arcsec.
+! Angles are 252.5 - 292.5 degrees
+! Angles further restricted by 1 degree for hardware
+!-rlo2=885.42
+# rlo2=876.00	!.. 879.87
+!-rhi2=995.24
+# rhi2=982.00	!.. 984.62
+! Radial limits reduced to prevent selection of guide
+! stars which cannot be actually set.
+rlo2=879.0	! 3 arcsec more
+rhi2=979.0	! 3 arcsec less
+! 1 arcsec at radius of 929 arcsec is angle of 0.0617 degrees;
+! a 3 arcsec limit is 0.185 deg.
+! Round these limits to next degree...
+# alo2=252.93	!.. 251.88
+# ahi2=292.13	!.. 290.88
+alo2=253.0
+ahi2=292.0
+rot2=0.0	! Was 270.0
+mag2=15.5
+# mag2=17.5  really
+bmag2=11.0
+
+# 3 - Rectangular, centerfield
+mode3=0
+xlo3=4.75	!.. 6.7
+xhi3=4.75	!.. 6.7
+ylo3=0.0
+yhi3=0.0
+rot3=180.0
+
+! Following data for IMACS applies to
+!  all the guiders
+px=1000.0
+psize=0.086	!.. 0.095
+scale=1.0
+#offaxis-x=0.0
+#offaxis-y=0.0
+offaxis-x=-2.66
+offaxis-y=-1.55
+
+!
+!  Set the Magellan guider as LDSS standard
+!
+
+! guider  Magellan
+! #default
+! name=MAG
+!! Use LDSS as the name here...
+guider  LDSS
+name=LDSS3
+offaxis-x=0.
+offaxis-y=0.
+field-w=867.0
+field-h=867.0
+unit-x=-0.346
+unit-y=-0.346
+center-x=0
+center-y=0
+maglim=16.5
+! Limit same as imacs mag1 limit
+brightlim=11.0
+! -- That's all...
+!
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # #     Version History     # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+!
+! 2014/07/17 -- Version 1.51
+!	Added LDSS3_NOR, LDSS3_MIC, and LDSS3_MAC for the new LDSS3-C footprint
+!  in three modes:  normal, nod & shuffle (micro) and nod & shuffle (macro)
+! 2010/12-14 -- Version 1.50
+!	Starting version for version tracking
+!
+!
+ ! 2.13 CVnqV1uRtY8CESm6kT5cxm9NeLW  UfRxblf7UfF@3PcsFrKCwv1iQfZlSfZrIIlKkXATUoLay9qMwwGyscOZjwvjoMSt9vdiG00BsTJOASmK@WTeQMByQuDMSsGoAFKOoQZBb7v6oAQX4I_SZMDU7DocWdT5Bgcs2NUqHjcLo9zBcnIJHFjlB4doZKoy 

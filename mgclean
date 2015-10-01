@@ -1,0 +1,77 @@
+#! /bin/sh
+#
+#  mgclean  = Mask Generation clean (files)
+#
+#  Argument is a list of mask file names to clean; if a wild card
+#   is used, it is recommended to use   xxx*.obs  to only send the
+#   .obs files to this script.
+#
+#  Can put in -n and following arguments will only give message
+#  rather than actually deleting the files.
+#
+#  The .SMF, .obw and *xxxx*.nc files are removed if a valid xxx.obs
+#  file is found.  The filenames deleted are displayed.
+#  If no .obs file exists, an error is indicated, and the next
+#  argument is used.  After 3 errors, an exit is done.
+#
+#  A loop is executed for each valid argument, ending when there are
+#  no arguments left, or after 3 error arguments.  If no arguments are
+#  given, a short explanation is issued.
+#
+#
+#---
+#
+#  Subroutines
+rmx() {
+  if [ -f $1 ]
+  then
+    if [ $skip -gt 0 ]
+    then
+      echo "Would delete $1"
+    else
+      echo "Deleting $1"
+      rm -f $1
+      nfd=`expr $nfd + 1`
+    fi
+#-  else
+#-    echo "  (No file $1)"
+  fi
+}
+#
+#---
+#  First, echo the arguments...
+#  works, now find .obs file name
+skip=0
+ner=0
+nfd=0
+while [ -n "$1" ]; do
+# Check for non-delete flag, -n
+  [ "$1" = "-n" ] && skip=1 && shift && continue
+# find the root name for .obs file...
+  root=`echo $1 | cut -d"." -f1`
+  fn="${root}.obs"
+  if [ -f $fn ];  then
+# Have found a valid obs file; remove associated files
+    rmx ${root}.SMF
+    rmx ${root}.obw
+    rmx ${root}.obx
+    rmx I${root}.nc
+    rmx ${root}.ps
+  else
+#  Not found, count error
+    ner=`expr $ner + 1`
+    echo "No such file as $fn"
+    [ $ner -ge 3 ] && echo "Error exit." && break
+  fi
+  shift
+done
+if [ $nfd -gt 0 ]; then
+  echo "Deleted $nfd files."
+else
+  if [ $skip -eq 0 ]; then
+    echo "No files deleted."
+  fi
+fi
+#
+exit
+#

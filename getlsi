@@ -1,0 +1,19 @@
+#! /bin/sh
+#  getlsi -- Download lsi.tgz from OCIW server
+me=`logname`
+myhost=`hostname`
+pass="${me}@${myhost}"    # or, edit to insert your email address
+#
+ftp -nv <<EOF
+open  ftp.obs.carnegiescience.edu
+user  anonymous  $pass
+cd  pub/clardy
+binary
+get  lsi.tgz
+quit
+EOF
+#
+echo "Use command:   gtar xfz lsi.tgz"
+echo " to extract the files."
+#
+exit

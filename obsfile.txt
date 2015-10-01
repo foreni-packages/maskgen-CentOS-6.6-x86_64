@@ -1,0 +1,306 @@
+		The Observation file for Mask Generation
+
+Introduction:
+
+Input to the "maskgen" program is a file named "<maskname>.obs" which contains
+all the information needed to create a slit mask description.  As a convenience
+for the user, a program "intgui" is created to interface between the user and
+the .obs file; it acts as an interactive graphical editor for the .obs file,
+both viewing and changing most of the things which may be present in the
+actual .obs file.
+
+For most use, the "intgui" program may be used to create and edit the .obs
+file, and to make a new .obs file starting from an old one.  Only advanced
+users should need to consult the internal details of the .obs file.
+
+This document describes the .obs contents first from the point of view of
+the user of the "intgui" program, and then the detailed part at the end
+describes all the file parameters.
+
+
+When the .obs file is read, a default valued data structure is created,
+and then modified by values read from the .obs file.  Thus, all default
+values need not be present in the file, but may be entered without
+being an error.
+
+The "intgui" program and its windows:
+
+An ".obs" file is created when the data is saved from the "File" menu
+pulldown items.  The file name is taken from the "Observ. file" value.
+The first two lines in the file are comments giving the file name, and
+the date and program version which wrote the file.
+
+There are comment lines, introduced by "!" or "#" characters.  Some of
+these lines contain useful information which is saved.
+
+Most lines in the file are of the form "Keyword  arguments", where a
+keyword is present, separated by space or tab characters from one or
+more agruments; multiple arguments are also separated by spaces or
+tabs.  Keywords are not case sensitive, but arguments may be.
+
+Fields in the "intgui" screen correspond to arguments in specific
+keyword entries within the .obs file.
+
+The "Observ. file" is put in the FILENAME keyword, and the "Observer:"
+name in the OBSERVER keyword.  Any global comments from the file which
+was read to initialize the program are output, and the commentary 
+entered in the "Title:" box is placed in a TITLE line entry.  Then the
+R.A., Dec., Equinox and "Slit Pos. Ang." entries are formatted into
+lines with keywords CENTER, EQUINOX, POSITION.
+
+A comment is added on the rotator flip status.
+
+If present, guide star selections made in the skyview window are
+entered as GS1 (principal guider) and GS2 (Shack-Hartmann) lines.
+
+The "Obs. Date:" is encoded later in the file as a DATE line, if it
+appears.
+
+The INSTRUMENT and DISPERSER lines are generated from the instrument
+and disperser selection menus, using the proper optical file names
+for these things.  The TELESCOPE is set based on the Instrument
+selected; it is very rare that an instrument is moved to a different
+telescope, and the program would be modified in that case.
+
+Wavelength ranges are recorded in WLIMIT and possible DLIMIT lines
+(if secondary limits differ from primary) and the center wavelength
+is put into a WAVELENGTH record.
+
+The slit specifications and uncut lengths are used to create
+the SLITSIZE, REFHOLE, and uncut keywords directly.  The overlap value
+is used in the OVERLAP keyword if it is not the default value.
+
+Repeat counts for objects and reference objects are used for the
+REPOBJ AND REPREF keywords, and the "Ref. Limit:" value is used
+in the REFLIMIT keyword.
+
+Priority values for "MustHave:" and "Pdecide:" are set into the keywords
+for MUSTHAVE and PDECIDE if they differe from the defaults.
+
+Finally, all the object files in the "Object Files" list are inserted
+as OBJFILE lines at the end.
+
+
+Some former, obsolete or not supported values are passed to the output
+.obs file if present in an initial file.  Thise include the keywords
+of TEMPERATURE, REFSEL, GAPS, HANGLE
+
+
+The .obs file specification and internals:
+
+Ordinary users don't need to read further.  Those brave souls who wish to
+explore the depths may proceed at their own risk.  Things below here may
+not be up to date, might have been changed at different times, and could
+well contradict each other.
+
+Any line which is null, that is has no characters before the newline
+termination character is ignored.  Any line consisting entirely of
+tab or space characters is also ignored.
+
+Comments:
+The characters "!" and "#" are used to introduce a comment anywhere in
+the file, however some comments are treated in a special way.
+Lines starting with ! or # and having a second character of ".", "-"
+or "=" are saved in a comment queue as global comments.  Lines starting
+with "!#" or "#!" are saved as pass-through comments, and can be
+used in later processes.  These comments are placed in the .SMF file
+by maskgen.
+
+After removing comments, remaining lines in the file are parsed for
+a leading keyword, separated from the rest of the line by space or
+tab characters.  Extra space and tab characters before and after the
+keyword and the remaining characters are removed.  The keyword is
+shown in uppercase here, but is actually case insensitive.
+Interpretation of items following the keyword depend on the keyword
+itself, and are described for each keyword.
+
+Keywords:
+Following sections are descriptions of the data expected for each
+of the possible keywords.  Any keyword found which is not recoginzed
+results in an error message.  There are some obsolete keywords which
+are recognized as such.
+
+OBSERVER
+  An observer name, up to 16 characters.  This name is passed on to
+  the .SMF file to be used in the mask label.
+
+FILENAME
+  The name of the file, up to 8 characters.  This is the name used to
+  produce the .SMF file.
+
+TITLE
+  A title, your choice.  Passed to the .SMF file.
+
+HEADER
+  Added to commentary, passed to .SMF file as a comment starting !=
+
+DATEOBS
+  Currently unused.
+  If given, date in form yyyy-mm-dd should be given, numeric only.
+
+CENTER
+  Right Ascension in hours, either hh.hhhh or hh:mm:ss.ss formats
+  Declination in degrees, either +dd.dddd or +dd:mm:ss.ss formats
+  No spaces within a field, and free format of : for sexigisimal or
+  . for decimal values.
+
+EQUINOX
+  The coordinate system equinox for the center above.  This is usually
+  a standard date (1950.0 or 2000.0) defining the coordinate system,
+  or a non-standard equinox.  Used to precess the center position to
+  the coordinate system of the star catalog in skyview, and passed on
+  for data reduction.
+
+POSITION
+  An angle, in decimal degrees, of field orientation.  A value of zero
+  (the default) results in slits running east-west, spectroscopic
+  dispersion running north-south, and the principal guider north of
+  the field, and Shack-Hartmann guider south.  Positive values rotate
+  the spectrograph counter-clockwise on the sky from this orientation.
+
+GS1
+  First guide star position; separated by spaces there are 3 fields:
+  Right Ascension, either hh.hhhh or hh:mm:ss.ss
+  Declination, either +dd.dddd or +dd:mm:ss.ss
+  Equinox of coordinate system, decimal years
+  An optional catalog number may be present and is ignored.
+
+GS2
+  Second guide star, same format as first.
+
+SLITSIZE
+  Default slit parameters.  Slit sizes are in arcseconds on sky.
+  These are separated by spaces:
+  Slit width in decimal arcseconds.  Default 1.0
+  Slit length on A side, arcseconds.  Default 6.0
+  Slit length on B side, arcseconds.  Default 6.0
+  Slit orientation angle, decimal degrees relative to nominal
+  direction perpendicular to the dispersion direction.  Default 0.
+
+REFHOLE
+  Default reference hole parameters separated by spaces.
+  Hole width, decimal arcseconds.  Default 5.803 (about 2.0 mm).
+  Hole shape code, integer.  0=circle, 1=square, 2=rectangle, 3=special.
+  The default shape is square.
+  Hole A length and B length.  For circle or square shapes, these will
+  be ignored and 1/2 the width used instead.
+  Hole orientation angle, decimal degrees.
+
+SLEXTEND
+  Integer value controlling the automatic slit extension algorithm.
+
+OVERLAP
+  Decimal value of pixels which is the negative of the minimum spectrum
+  separation on the detector acceptable.  Default -2.5 requiring a
+  minimum separation of 2.5 pixels on the detector.
+
+UNCUTLEFT
+  Decimal number of arcseconds left uncut on A side of slits, used
+  for nod & shuffle operations.  Default is zero.
+
+UNCUTRIGHT
+  Decimal number of arcseconds left uncut on B side of slits, used
+  for nod & shuffle operations.  Default is zero.
+
+MUSTHAVE
+  Decimal priority value defining objects with numerically less priority
+  to be "must have" objects.  Default -2.0.
+
+PDECIDE
+  Decimal priority value separating the priority algorithm from the
+  conflict count algorithm.  See documentation.
+
+EXPRI
+  Decimal priority supplement value; effective priority is supplemented
+  by this multiple of the use count.  See documentation.
+
+INSTNAME
+  Obsolete keyword.  Formerly contained the name of an instrument.
+  Use the INSTRUMENT keyword instead.
+
+INSTRUMENT
+  The name, as found in the optical definition file, of the instrument
+  being used.  Spelling must be correct.
+
+TELESCOPE
+  The name, as in the optical definition file, for the telescope on
+  which the instrument will be used.  Spelling must be correct, and
+  consistency with INSTRUMENT name is checked.
+
+DISPERSER
+  The name, as in the optical definition file, of the disperser which
+  will be used.  Must be spelled correctly, and be consistent with
+  the choices available for the INSTRUMENT selected.
+
+GRATING
+  Obsolete keyword.  Use DISPERSER instead.
+
+FILTER
+  Unused keyword.  Should be the name of a filter, as found in the
+  optical definition file.  Currently ignored.
+
+WAVELENGTH
+  Decimal value of center wavelength in Angstroms.  Only used for the
+  IMACS f/4 camera to specify grating angle.
+
+WLIMIT
+  Two decimal values of wavelengths in Angstroms, used to set the extent
+  of the spectra.  If fewer than 2 values are given, they are ignored.
+
+DLIMIT
+  Two decimal values of wavelengths in Angstroms, used to set the
+  secondary spectrum extent.  This is used for detector limit testing,
+  and in the Echelle case for spectrum length descriptions.
+
+EXORDER
+  Value to control the extra order comparison feature.
+
+TEMPERATURE
+  Expected observing temperature, Celsius.  If the value exceeds an
+  absolute value of 40.0 degrees, it is ignored.
+
+HANGLE
+  Expected hour angle of observation in decimal hours.  Used for the
+  differential refraction feature, when implemented.
+
+OBJFILE
+  Name of a file of objects to be read.  Multiple instances of this
+  keyword are expected, and multiple files may be read.
+
+REPOBJ
+  Integer value of repeat object limit.
+
+REPREF
+  Integer value of repeat reference object limit.
+
+REFSEL
+  Integer reference selector value.  See documentation.
+
+REFLIMIT
+  Integer reference object limit value.  See documentation.
+
+IFU
+  Value to control the IFU support feature.
+
+OFFCENTER
+  For IFU feature, the R.A. and Dec. of the object; in the usual
+  hh.hhh or hh:mm:ss and +dd.ddd or +dd:mm:ss formats.
+
+DEBUGFILE
+  Used with compiled debug features to create a file of debug messages.
+
+ORDER
+  Integer order number.  Used with dispersers which do not have a
+  defined order, usually IMACS f/4 gratings.
+
+GAPS
+  Value to control the gap avoidance feature, when implemented.
+
+DATE
+  Integer value of MJD for intended observation.  Usually selected
+  by pull-down menus in the intgui program.
+
+--- Any keyword not listed will be unrecognized, a message printed,
+and other data on the line ignored.
+
+

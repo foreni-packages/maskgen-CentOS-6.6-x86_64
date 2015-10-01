@@ -1,0 +1,217 @@
+#! /bin/sh
+# Observing Catalog creation from .SMF files.
+#
+# Copyright (C) 2010  Ken Clardy, OCIW, Pasadena, CA
+#
+#  Script accepts as input a set of file names, which should be
+#  .SMF files containing !.OC lines with observing catalog information.
+#
+#  Will create from them a file, named <username>xxx.cat, with xxx being
+#  a sequence number not already used.
+#
+#  Alternately, can be used to produce a listing on stdout of the
+#  title data from all the files.
+#
+# ...
+#
+#  Leading section is a set of subroutines used by the main process.
+#
+#  Example of command file structure in default/nispset
+#
+print_usage () {
+# Following is an in-line literal section...
+    more << EOF
+ 
+Create an observing catalog file from .SMF input file comments,
+  or list title data in a set of .obs or .SMF files.
+
+USAGE:
+   $this [-f name] [-n xx] [-c name] [-t] [-h] [-v] [-x]  filenames
+      (wildcards may be used in filenames)
+      
+OPTIONS:
+
+   -f   Specify output file name [usernamexxx.cat]
+   -n   Specify starting line number [0]
+   -c   Specify line name field (namxxx) [xxx]
+
+   -t   List the title data instead of producing catalog file
+
+   -h   Print this help information
+
+   -v   Give explanatory prints
+   -x   Show, but do not execute commands, prefaced with "+++"
+
+ARGUMENTS:
+    file names containing !.OC comments to be used
+    or (-t): file names of .obs or .SMF files with titles to display
+ 
+EOF
+    exit 0
+}
+#
+#
+#	+---------------------+
+#	| Utility Subroutines |
+#	+---------------------+
+#
+#	askme	inquiry, returns $a
+#	low3	last 3 digits, returns $xx3
+#
+#  Universal inquiry.  Arguments are:
+#	The question to ask, usually in quotes
+#	The default reply for <cr>.
+#  Returns (prints) the reply
+#  Suggested use:  askme "Question ?" n; answer=$a
+askme () {
+    [ $# -gt 1 ] && query="$1 [$2] " || query="$1"
+    echo "$query" | tr -d "\012"	# With no newline
+    read a dummy
+    [ -z "$a" -a $# -gt 1 ] && a=$2
+}
+#
+#
+low3 () {
+# Return text string for argument containing last 3 digits
+# returned string is in special symbol xx3
+    xx3="$1"
+    while [ -z "`echo $xx3 | cut -c3`" ]; do
+	xx3="0$xx3"
+    done
+}
+#
+#
+#
+#
+#	+----------------------------+
+#	| Initialization and Parsing |
+#	+----------------------------+
+#    
+init () {
+    this=`basename $0`
+
+    VERB='> /dev/null'          # Omitting some messages
+    ECHO="eval"
+    optv=""
+    optx=""
+
+    user=`logname`
+    n=1
+    low3 $n
+    outfile=${user}${xx3}.cat
+# Create file name dynamically
+    while [ -f $outfile ]; do
+	n=`expr $n + 1`
+	[ $n -gt 999 ] && break
+	low3 $n
+	outfile=${user}${xx3}.cat
+    done
+    line=0
+    ttl=0
+    pfx=""
+}
+#
+parse_arg () {
+    while getopts "c:n:f:htvx" ARG
+    do
+# echo " Parsing arg = $ARG ..."
+        case $ARG in
+	f) outfile=$OPTARG ;;
+	n) line=$OPTARG ;;
+	c) pfx=$OPTARG ;;
+
+	t) ttl=1 ;;
+
+	h) print_usage ;;
+	v) VERB=""; optv="-v" ;;
+	x) ECHO="echo +++"; optx="-x" ;;
+	 \?) print_usage ;;
+	*) echo "** Error - should not get here!"
+                print_usage ;;
+        esac
+    done
+#   echo " parsed to $OPTIND"
+    return `expr $OPTIND - 1`
+}
+#
+#
+#
+#
+#
+#	+=======================+
+#	|  Main Line Execution  |
+#	+=======================+
+#
+init
+#
+#echo "Initial arguments = $*"
+parse_arg $*
+count=$?
+eval echo "Parsed $count options from line: $*" $VERB
+#
+shift $count
+#
+#  In case -v was selected, show what we have here...
+eval echo  "We have $# arguments to process." $VERB
+[ -z "$VERB" ] && low3 $line
+eval echo  "Start line-num = $pfx$xx3, Output = $outfile" $VERB
+#
+#
+n=0
+[ -z "$1" ] && print_usage
+while [ -n "$1" ]; do
+eval echo "Process for $1" $VERB
+
+# It turns out that while variables may be passed to the
+# inside of a do loop, they cannot be passed back out;
+# so all the work gets done in the loops and no status
+# makes it back outside except of course, the output file.
+
+    line=`expr $line + 1`
+    low3 $line
+# If the file has no comment line in it, we need to count
+# anyway, since the status of line cannot be incremented
+# by the inner loop and be known in the outer loop.
+
+    while read word rest
+    do
+	if [ $ttl -gt 0  -a  "x$word" = "xTITLE" ]; then
+	    $ECHO 'echo $1 :: $rest'
+	    break
+	elif [ $ttl -eq 0  -a  "x$word" = "x!.OC" ]; then
+# The "x" above helps some words, such as "!" to be compared correctly
+# This seems to be required by the bourne shell test methodology
+	    com="echo $pfx$xx3 $rest >> $outfile"
+	    $ECHO $com
+#	    $ECHO 'echo $pfx$xx3 $rest >> $outfile'
+	    break
+# The break allows only one !.OC comment per file, and slightly
+# speeds the process by not reading all the object lines
+	fi
+    done < $1
+
+# Note that any line containing a word starting with # will not be
+# put into the output file.  Should not be a problem for automatically
+# created comments which do not include this character.
+
+    shift
+    n=`expr $n + 1`
+done
+eval  echo "Counted $n files"  $VERB
+#
+#  here, display the outfile if -v selected;
+# otherwise just give the name of the file if it was created.
+if [ -f $outfile ]; then
+    if [ -n "$VERB" ]; then
+	echo " Observing Catalog File is ${outfile}"
+    else	# This section is done when -v was selected...
+	echo " " 
+	echo "  Observing Catalog File  ($outfile)  contains:" 
+	cat $outfile 
+    fi
+else		# We do not have an output file, just give a message
+    echo "  No output file was produced."
+fi
+#
+exit
+#

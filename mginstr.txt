@@ -1,0 +1,2163 @@
+		Mask Generation Software 
+
+
+Introduction:
+
+    The software to make multi-slit masks is modular in nature, and
+    consists of several relatively independent executable programs.
+    These may be executed independently, or combined by the use of
+    shell scripts.  One module may also invoke a later one by use
+    of a system command.  This structure enables things to be started
+    at any of the logical break points without needing to start over
+    and re-execute from the beginning.
+
+    During development, this structure appears more modular than it
+    will in the final polished version, where a unified control will
+    blend the modules together.
+
+
+General Concepts:
+
+    Each mask has a "mask name", which is a short (limited to <= 8
+    characters) and simple (no spaces, no special characters) name
+    for the mask.  It is used in file names (hence the no special
+    character restriction) and as a command line argument to specify
+    which mask to operate on.  The name is also engraved on the mask
+    itself, and serves to distinguish it from other masks.  The name
+    of the observer (up to 16 characters) is also engraved on the
+    mask, so everyone knows who's mask it is.  In the documentation,
+    the notation <maskname> is often used to show where this name
+    goes in a file name or program command.
+
+    There is a series of files, all plain ASCII text, and all can
+    be edited by a standard text editor.  The mask name forms part
+    of the file name for each of them, and these files are processed
+    by the software to produce the actual mask, and later for the
+    observing and data reduction tasks.  It is through these files
+    that data about the mask generation process flows between the
+    individual program modules.  All files contain a security status
+    line at the end, with the software release, a file checksum, and
+    a signature for files created with released software.  Do not
+    remove this line, it allows the software to detect tampering
+    with the files and to reject files with unauthorized alterations.
+
+    Each individual program takes as a command line argument the
+    mask name, or the equivalent file name.  There are some command
+    line options available.  Using "program -h" will give a brief
+    help display showing what options are available.
+
+
+To make a mask (overview):
+
+    Use the "intgui" command.  The mask (observation file) name is
+    an argument to this command.  This GUI produces the observation
+    file used by mask generation.
+
+    Once the observation file is created, use the "maskgen" command,
+    which takes the mask (observation file) name as an argument.
+    This produces a SMDF file as output.
+
+    The <maskname>.SMF file is what gets sent to Las Campanas for
+    the actual cutting of the physical mask.
+
+    When the <maskname>.SMF has been created, the "maskcut" command
+    may be used to produce a I<maskname>i.nc file containing the
+    actual laser cutting commands.  This file may be examined by
+    the "ncplot maskname" command to look for errors.  The "maskcut"
+    step is normally done by the staff at Las Campanas for the
+    production mask (IMACS masks only).
+
+    At observing time, the <maskname>.SMF file will be useful to
+    see where to set the telescope, the rotation angle at which to 
+    position the instrument, the grating angle, and other things.
+    It is also useful for data reduction.
+
+
+Example:
+
+    > intgui
+     ...  Observation file [return for new]: <CR>
+    Fill in the GUI.  Put "F123M2" (example; use your own name) in the 
+    Observ. File window as the mask name.
+    Save and exit the GUI when all filled in.  Creates F123M2.obs
+    To edit further, do "intgui F123M2"
+    > maskgen F123M2
+    A mask file will be created, as F123M2.SMF.
+    This file is your final output, and would be sent to Las Campanas
+    for the cutting of your mask.
+
+    To check this mask, two utilities could be used:
+	> smdfps F123M2
+	Makes a file F123M2.PS from the F123M2.SMF file; it may be printed
+	as a hard copy view of your mask.
+	NOTE that smdfps is not available in Mac-OS-X distributions.
+	> smdfplt F123M2
+	Creates an interactive plot of the features to be cut in the mask;
+	they should look correct.
+    > maskcut  F123M2
+    The mask cutting program then creates IF123m2i.nc, which
+    is suitable for the laser cutting machine.
+    > ncplot -t F123M2
+    Gives an interactive plot of the mask cutting operation.
+    Once you believe that the mask is correct, have the operator
+    produce the mask from the "IF123M2i.nc" file.
+    >> The latter 2 steps are for error detection only.  In practice,
+    it is the file F123M2.SMF which is sent to Las Campanas for the
+    production of your mask.
+
+
+That's the quick introduction.  There are (very) many details.  Here
+are some of them, organized in approximately the order in which they
+are used.  However, you will need to know about all of them to be a
+really proficient mask designer...
+
+
+Interface GUI controls:
+
+Menus and buttons in the top row of the Interface GUI control its
+operation.  The first, labeled "File" controls the saving of the data
+to the .obs file.  It has options "Save" -- to save the data to the
+current file, "Save As" to save the data to a file with a specified name,
+"Save Exit" to both save the data and exit, "Quit nosav" to immediately
+quit without any questions and no save of data, and "Exit" to simply exit
+the program without (optionally) saving the latest changes.
+
+The second control, labeled "Options" controls the optional features, 
+which are explained further below.  Currently, the options are "Skywin"
+for a sky window plot similar to the one used to select guide stars at
+the telescope, and "IFU" for support of the Integral Field Unit feature
+of IMACS.  Other options may be added in the future.
+
+The third control, labeled "MaskGen" is simply a button to do a trial run
+of the "maskgen" program and return to the Interface GUI.  Doing this will
+save the current data to the currently named file, execute the "maskgen"
+task with the "quick look" option, and return.  If insufficient data is
+currently present in the GUI to do a "maskgen" run, a message will appear
+showing the first reason found.  There may be several such reasons, but
+only one will be displayed.  Also, the "quick look" option passed to the
+"maskgen" task to suppress debug message display, normal data display,
+some features which take extra time, and most importantly, the creation
+of the output .SMF file.  A full "maskgen" run is required to create that
+output file, and to implement all the features of "maskgen" to actually
+make masks for observing.
+
+
+The "intgui" parameters:
+
+When started without an argument, or a name which can't be found
+in the directory, the program asks for a file name, or just a
+<cr> to start with a default parameter set.  This default set is
+quite basic, and has strange names for the mask and observer; also
+a position which is quite impossible.  You will need to fill these
+things in.  Later, use the mask name as an argument to start where
+you left off in editing that .obs file.
+
+The first parameter given to "intgui" is the mask name, the ".obs" 
+part of the file name is supplied by the program.  The observation
+file MUST have the suffix ".obs" and this is enforced by the "intgui"
+program when it reads and writes the file.  The easy and proper thing
+to do is to simply use the mask name, and let the program supply
+the ".obs" suffix automatically.  Also use the mask name as the
+parameter for "maskgen", "maskcut", and "ncplot", the programs
+will supply the correct suffix automatically.
+
+In the text fields (mask name, observer name, title) you need to select
+the field with the mouse and backspace over all characters to be
+deleted, and then type in what you want.  No <cr> is needed there.
+Remember, only 8 characters in mask name (labeled Observ. file) and
+only 16 in the observer name.
+
+The mask name may have only alphabetic and numeric characters, and no
+embedded spaces.  It must serve as a part of a file name, and that file
+name must be acceptable to a DOS program at a later time.  The observer
+name also cannot have any embedded spaces, if any are entered they will
+be replaced with underscore characters.
+
+When entering the R.A. and Dec. it is always good form to select the
+proper equinox from the pull-down menu.  A standard value such as
+2000.0 is preferred, but you can put in whatever you like.  The value
+for "today" is the time of mask generation, not of observation.
+
+The R.A. and Dec. positions are special numeric fields.  When you start
+entering data the field goes all red.  This indicates that a <cr> is
+needed when you finish to store the data.  For R.A. and Dec. the format
+is any of the following, all give -02:12:36 = -2.210
+	-02:12:36
+	-2 12 36
+	-2.210
+	-2 12.6
+The value is changed to the dd:mm:ss.ss format after the <cr> is entered.
+For your convenience, when entering data in these fields you may use spaces
+between hours (or degrees) and minutes and seconds instead of entering
+a colon, after you complete the field it will be shown with the correct
+colons.  Check to see that is what you ment.
+
+The "Slit Pos. Ang." needs lots of explanation.
+A position of 90 degrees means that the slit runs at position angle
+90 degrees on the sky, or east-west.  This positions the instrument
+itself so that the dispersion direction is north-south, and the IMACS
+instrumental position angle is 0.0 in this orientation.  The latter
+value is actually used in the .obs file, and the value in the file is
+90 degrees less than the value in the "Slit Pos. Ang." window.
+When projected onto the sky (in the optional sky window) slits will
+run right to left and the dispersion up-down.  To see the position
+angle and sky orientation, use the "N-vector" feature in the sky window
+(enabled by default) to show the current direction of North on the sky.
+
+When using the "N & S Mode" (see below) the value entered here is still
+the slit orientation, and it will be the same as the instrument position
+angle, since the dispersion direction is now 90 degrees less due to
+the disperser having been rotated.  Slits projected on the sky will be
+up-down instead of the usual right-left in the sky window view.
+
+  The instrument is mounted on the telescope's Naysmith focus rotator,
+which has only 360 degrees of rotation.  If driven to its limit (of 
++/-180 degrees in rotator angle) it will then need to be driven back
+around by 360 degrees to start up again.  That is best avoided during
+an observation.  If this would happen with the position above the
+horizon, a "!ROTATOR!" appears to the right of the window to indicate
+a problem.  If it happens with the object above 30 degrees altitude,
+this warning is in red.  Otherwise, the "(OK)" appears.  The default
+position of 90 degrees is OK at all declinations north of the latitude
+of -29 degrees.  South of -29 degrees, you should replace the default
+value of 90 with 270 degrees, causing the instrument to still have
+dispersion north-south (actually south-north) and the slits will still
+run east-west.  If your project needs a particular slit position angle,
+try it, and if a rotator conflict is indicated, change it by 180
+degrees to get the conflict to go away.
+
+The actual rotation mechanism has physical limits which are not quite
+180 degrees.  Currently, the software limits are -151 degrees to +177
+degrees.  This means a band of 33 degrees of rotator angle is not
+accessible, and positions which would produce rotator locations in
+that region will produce an error indication.
+
+The actual limitation of -151 degrees is due to a cable wrap limit on the
+IMACS instrument near the zenith.  This is seldom needed during actual
+observing, and could be computed independently, allowing a limit of -177
+degrees; however the telescope control system currently has its rotation
+limit set to -151 to prevent any slew operation from hitting this limit.
+Until that restriction can be removed, we need to show the actual value
+of the limits used by telescope control.
+
+It is possible to have rotator errors, even large spans of hour angle,
+above the horizon at position angles which are 180 degrees apart,
+making some slit position angles difficult to observe.  For these
+locations it may not be possible to make a single mask which can be
+used both east and west of the meridian.
+
+A circumpolar object which is always above the horizon will have a
+rotator error location somewhere in its daily path.  Choosing a position
+angle to put that rotator error far away from upper transit will be
+the best that can be done.
+
+A graphical display of the rotator problem(s) is present below the
+Declination and Slit Angle windows.  It shows the object's above horizon
+arc from rise (east) on the left to set (west) on the right.  Tic marks
+appear every hour, larger ones at 5 hour intervals.  This band is
+green where there is no problem, and a red band indicates the hour
+angle(s) where the rotator has it's 180 degree problem.  Objects so far 
+north as to be below the horizon will show only grey instead of a green 
+bar.  And, objects which pass within 40 arc minutes of the zenith will 
+have a blue dot at the meridian; observation within 40 arc minutes of the 
+zenith are usually  not allowed due to the high azimuth rotation rate.
+Where the rotator error band would be small, usually for positions near
+the zenith where azimuth rotation is rapid, the red band will have round
+ends to better indicate its position.
+
+When a rotator error is present, a comment giving its location is
+inserted in the .obs file created.
+
+It is possible to select a position far to the north with a position
+angle which produces a rotator error for the object's entire path.
+Such a mask will be un-observable, and will be rejected by maskgen,
+as would objects which never rise above the northern horizon.
+
+As a new feature, the green part of the star band now shows that part
+of the object's above horizon arc in which the object is also above
+the 2.0 airmass altitude.  This is an indication of the lowest altitude
+at which useful observations should be planned.  Nearer the horizon, a
+light gray color is used.
+
+As a further aid to planning your observations, an observing date may
+be entered, and when this is specified another graphic display below
+the green line will indicate the times of sunset, twilight and sunrise
+on the same scale as the object's rise-transit-set arc.  In this sun
+bar, yellow indicates that the sun is above the horizon, blue is twilight,
+and black is astronomical twilight, with the sun below -18 degrees
+altitude.  A green mark indicates solar midnight.  Also, if the date
+entered is not at least 3 weeks in the future, the "Obs. Date:" label
+will appear in red; if not at least 6 weeks in the future it will be
+in yellow, and if 6 weeks or more in the future it will be green.
+Masks will not be cut within less than 3 weeks of the observing run,
+and should have special permission within 6 weeks of the start of
+the run.   This date is used for planning purposes only, and
+is not used in any way in mask making.  The mask created may be used
+at any time the object field is observable.
+
+A third line in the graphic section gives the moon information; in
+the blue region the moon is below the horizon, in the white region the
+moon is above the horizon, and transits at the time indicated by a
+brown tic mark.  The percent of moon illuminated is displayed to the
+right of this graphic line.  To the left of this line, the angular
+distance of the moon from the field center, in degrees, is given. 
+These amounts refer to the time of lunar transit, and will change
+during the night.
+
+The moon rise and set are associated with the nearest lunar transit
+to the midnight ending the selected day.  Near new moon, there will be
+two consecutive days on which this is the same lunar transit.
+
+The date selected is the calendar date of the day preceding the
+midnight indication on the graphic.  Things occurring after midnight
+are technically on the following calendar date.
+
+
+To the right of the date selection is a field for the expected Hour
+Angle of observation, labeled "H.A.".  You may fill in the expected
+mean hour angle in hours and decimals in this field.  It is only
+active when the Differential Refraction feature has been activated.
+See the section below on Differential Refraction for more information.
+
+
+To define your instrument and disperser, first select from the instrument
+pull-down menu the proper camera, either the f/2 or f/4.  Then, select
+the disperser from the menu presented for that camera.  Finally, the
+grating/grism order may be adjusted if needed.  When a new instrument is
+selected, the appropriate new disperser menu is created, with nothing
+yet selected, which is why disperser must be selected after instrument.
+
+The "N & S mode" button is active only in IMACS with the f/2 camera
+selected.  When activated (the box is checked) a special Nod and Shuffle
+mode is selected.  The slit orientation is rotated 90 degrees on the
+mask, and the "Slit Pos. Ang." field is changed to indicate this.  This
+mode assumes that the special Nod and Shuffle setup has been requested
+and performed, with the disperser orientation changed.  In this special
+mode, there are 3 detector gaps across the spectra, but the readout
+direction allows charge shuffle operations across the dispersion direction.
+This feature replaces the former Nod and Shuffle orientation of the
+detector array; starting in May 2007 the detector will be permanently set in
+the "normal" orientation and Nod and Shuffle operation will be implemented
+by rotating the disperser and making masks with rotated slits.
+It is VERY IMPORTANT that the "N & S mode" and the orientation of the
+disperser agree with each other.  The "N & S mode" selects the special
+orientation of the disperser and rotation of the slits; it should be used
+whenever the disperser is in this orientation, even if actual nod and
+shuffle operation is not being done.  The "N & S mode" button has been
+placed next to the disperser menu to emphasize that it is associated with
+the disperser rather than the observing mode.
+
+Please note that "N & S mode" and the "N & S" selection in the "Gaps" pull-down
+are independent and must be selected independently.  This feature allows the
+reproduction of existing masks and can be eliminated in the future.
+
+There is a "Filter" menu which will be able to set the wavelength bounds
+of several named filters.  Those currently included are a set of test
+ranges which will be replaced in the future.  In any case, it is only the
+wavelength range which is actually used.  Change the wavelength range
+items individually to satisfy your observational requirements.  It is
+recommended that the minimum wavelength range needed be used, too long a
+range can cause more conflicts than necessary and remove objects which
+could actually be usefully observed.
+
+The wavelengths specified must be in a reasonable range, and cannot be
+omitted.  A range of 3400 - 12000 Angstroms includes all the published
+wavelength coverage of IMACS and LDSS spectrographs, and wavelengths of
+spectrum ends, detector range ends or center wavelength values outside
+this range will be rejected by the maskgen program.
+
+There is a second set of  wavelength limits labeled "Detector range" which
+are normally set equal to the primary range.  When they differ, this
+second set is used only to check conflicts of the spectra with the bounds
+of the detector, while the primary set is used to check conflicts between
+spectra, compute the middle wavelength of the spectra, etc.  This feature
+is useful to advanced observers who might have different requirements for
+a wavelength range to avoid conflicts and a smaller wavelength range to
+require to be on the detector.  If in doubt, let them be the same.
+When changing wavelength range limits, set the primary limits first, and
+the detector limits second because the primary settings are used to set
+the default values for the secondary ones.
+
+Please select the wavelength limits carefully.  If your limits and
+disperser choice produce a spectrum which is longer than the size of
+the detector, all your objects will be removed.  Not only that, but
+the "maskgen" task will produce only an error message, no mask.
+
+These wavelength limits have a different meaning when the Multi-Object
+Echelle disperser is in use, see the discussion on that special case
+disperser for details on setting wavelength limits.
+
+If using a grating (the f/4 camera) you should select an appropriate
+center wavelength.  This computes a grating angle for the instrument
+set-up, based on the grating line density.  For instruments using a
+grism, the center wavelength is displayed here, but cannot be entered.
+
+The "Ex.Ord:" menu has 3 possible values.  With "- Off -" selected
+(the default and recommended selection) no orders other than the specified
+one are considered.  With "Reference" selected, the reference objects
+have all orders of spectra considered for conflicts on the detector, and
+when "- All -" is selected, all objects have all orders considered.
+For most use, this should be left "Off" to maximize the number of slits
+which can be used.  If you might be troubled by bright reference stars
+having extra order spectra, those can be considered using the "Reference"
+selection without having all the fainter object extra order spectra also.
+
+The slit specifications are in arc seconds.  The full width of the slit
+is given, and it is centered on the object.  There are two lengths, to
+the "left" and "right" of the object position.  In the normal orientation,
+with position angle of 90, "left" is East on the sky.
+
+Below these slit lengths are the slit "Uncut" lengths.  Those are the
+amounts of each left and right slit which are not to be cut in the mask.
+This is for a special mode known as "nod-and-shuffle".  Leave these
+items zero unless you are using this special mode.
+
+These slit specifications are global defaults.  Individual specifications
+for specific objects may be entered in the object catalog file(s), including
+the slit width, lengths, shape and tilt.  See the "catdata.txt" file for
+details on how to do this.
+
+The "Overlap pixels" is the amount in pixels on the detector which adjacent
+spectra are allowed to overlap by.  The default is a small negative number
+which requires a small gap between any two spectra.  A zero value is also
+a popular choice here.  A somewhat more negative value is recommended when
+using the "Extend Slits" feature.
+
+The "Extend Slits" check-box is activated (red color on) to request the
+automatic slit extension feature.  This will run after the objects have
+been selected, and extend slits to optimize the sky averaging.  See the
+maskgen operation section for what it does.
+
+The "Shape" menu allows specification of small holes in addition to the
+usual slit.  The "Hole" entry is a circular hole, the "Box" entry is a
+square hole.  Since for the latter two the width is a complete specification
+of the hole, the slit length items are disabled, as is the extend slits
+feature.  Some kinds of nod & shuffle operation benefit from use of either
+holes or small square boxes; for most uses the slit is the preferred shape.
+
+The reference hole size is the width and length of the square hole centered
+on each reference object position.  The default provides a 2 millimeter square
+hole in the mask for each reference object, and is about right.
+
+The repeat counts require a little explanation.
+Many users have very crowded fields, and cannot get even a majority of
+their objects on a single mask.  They want to make multiple masks, with
+different objects on each one.  For this purpose, the mask generation
+program produces a file, "<maskname>.obw" which is in the object catalog
+format and includes for each object the count of the number of times that
+object has appeared on a mask.  This file is then used as input for the
+"next" mask in place of the original catalog file.  The repeat count is
+then the number of times an object is allowed to be repeated for this
+mask.  An object whose current use count exceeds the repeat count allowed
+is marked to not be used for the mask.  Usually, a repeat count of zero
+is selected, those objects with a use count of 1 (they got used on one
+of the previous masks) are then not used, and objects with a use count
+of 0 are considered for the mask.
+
+Since reference objects actually HAVE to be present, their repeat count
+is defined separately to allow reference objects to appear on the later
+masks in the set.
+
+The "Ref. Limit" parameter allows a large list of possible reference
+stars to produce only a limited number of actual reference holes on the
+final mask.  After the reference objects have been limited by their
+use count, and whether they can be on the mask, and optionally whether
+they actually appear on the detector, the program will 
+remove reference objects uniformly until only (Ref. Limit) of them
+exist as active reference objects in mask making.  The default value of
+99 is really quite high; they will not be reduced below a lower limit
+of 4 which is the minimum number for a good alignment in observing.
+This replaces the older "Ref. Sel." parameter, which is still supported
+as a value in the .obs file for compatibility with existing data, but
+will become obsolete in the future.  It is documented below.
+
+Reference objects were formerly removed uniformly by their placement
+in the list of objects.  A new algorithm has been introduced to
+remove excess reference objects by removing the least isolated such
+object first, and continuing to remove the remaining least isolated
+one until the limit count is reached.  In this context, "least
+isolated" means that object with the minimum sum of distances to
+the nearest n objects, where n is the lesser of 3 or (reflim - 1).
+This algorithm is observed to produce a spatially uniform distribution
+of objects covering the maximum possible area on the sky.  This may
+not minimize interference with desired observation objects, if there
+are such interferences, the user should remove the interfering
+reference objects explicitly.
+
+Users are strongly cautioned that use of the obsolete yet still
+supported "REFSEL" parameter will reduce the number of reference
+objects available to the reference limit procedure.  These two
+things should not be used together.
+
+Also, the choice of objects to be selected or removed to reach the
+(Ref. Limit) value is uniform with respect to the input list, not
+with respect to two dimensional position on the sky.
+
+(Obsolete description of older "Ref. Sel." parameter removed.  In the
+future, this obsolete method will no longer be supported.)
+
+The "MustHave" window specifies a priority at and above which an object
+is immune from removal due to conflict.  Higher priorities are numerically
+smaller.  The default value id -2.0.
+
+The "Pdecide" window specifies a priority below which objects will be
+scanned and removed based on number of conflicts.  The node with the
+largest number of conflicts will be removed first, and if several have
+the same number, the one with lowest priority is removed.  This will tend
+to maximize the number of objects retained for the mask, with the priority
+being a secondary consideration.  The default is 0.0.  See the section
+on conflict resolution in the mask generation discussion below for more
+exact details.
+
+The "Gaps" pull-down is active only for the IMACS instruments, and allows
+selection of the detector gap avoidance feature.  The menu allows an "-off-"
+value to turn the feature off, or the "N & S" for nod-and-shuffle orientation
+or "Norm." for the normal orientation.  It does NOT automatically shift the
+selection for other selections of nod-and-shuffle operation.  When this feature
+is selected and data for the current instrument exists, objects will be removed
+if they would fall into the gaps between the detector elements.  Only those
+gaps along the dispersion direction are considered, as many spectra are expected
+to intersect gaps which lie across the dispersion direction.  Also, reference
+objects which would fall in the gaps are removed (see the +a flag description
+on maskgen for this feature).  For instruments with no detector gaps (LDSS-3)
+this pull-down is disabled.  When no valid data exist for the selected
+instrument, a message in "maskgen" will indicate this; and when valid data
+are added to the opticdef.dat file, they will be used.
+
+As a special feature, the constellation name of the field center
+will be displayed in the intgui window, and will appear in a comment
+in the smdf file.  Let me know if any name appears misspelled.
+
+The "Object Files" button pops up a sub-window in which one or more
+file specifications for object files may be entered.  This is where
+you tell the mask generation program where your objects are.  At least
+one list of object positions is expected, and multiple files are
+supported.  One can put the reference star positions in a separate
+file for example, as another way of managing separate lists of
+reference positions.  Or, several programs might produce independent
+lists of objects in the same field.  In any case, the mask generation
+program reads all the object files into the same internal data
+structure, effectively concatenating all these lists.
+
+When the "<maskname>.obw" file is created in "maskgen" it contains
+copies of all your object file data in the same order in which it
+was entered, with the files concatenated in order.  When making
+subsequent masks, enter the "<maskname>.obw" name in the "Object
+Files" window to use it, using the maskname of the preceding mask.
+
+The object data input files now require only the object name and position
+values, other parameters are optional.  Non-default parameters may be
+specified by keyword=value syntax parameters, separated by whitespace.
+See the "catdata.txt" file included with the distribution for details
+on this format.  The program will continue to take the older positional
+form of these parameters for compatibility.  The default slit parameters
+are specified in the intgui window, default use count is zero.  Priorities
+when unspecified are MustHave - 0.5 for reference objects and PDecide + 5.0
+for ordinary objects.  Any .obw and .obx files will be written with the
+new keyword=value syntax.  New keywords may be introduced if needed.
+
+The entry of a slit position angle rather than a slit tilt is now
+allowed.  The tilt is relative to the dispersion normal direction
+for the mask, but the position angle is the actual slit angle on the
+sky, measured from North toward East, in degrees.  This is used with
+the instrumental position angle to compute the resulting slit tilt.
+If the resulting slit tilt causes the projected slit to be less than
+half its actual length, the object is removed.  A warning message
+appears if the debug level is more than zero.
+
+Any object record may have an optional in-line comment, starting
+with any ! or # character after the object name.  This comment is
+carried with the object, and written in the .obw, .obx and .SMF
+files for that object.  If it is no longer than 68 characters and
+has no parenthesis in it, it is also written in the .nc file.
+
+Documentation on the content and format of the object files is in
+the file "catdata.txt" which is part of the distribution; there is
+also a web link to it on the "maskmaking" web page where it is 
+titled "Object catalog data".
+
+
+Differential Refraction feature:
+
+When the check box labeled "Dif. Ref." is on (the box is colored) the
+differential refraction feature is active.  You will then be able to
+enter an expected hour angle of your observation, in hours and decimals
+in the box labeled "H.A." just below the observation graphical display.
+As previously explained, the tic marks in the graphic display are at
+each hour, with zero (meridian transit) in the center.  These will
+help you choose an appropriate hour angle.  Also, when the date of the
+observation is entered, graphics for Sun and Moon data appear as
+explained above, also helping to decide at what hour angle you will want
+to observe your object.
+
+When differential refraction is active, all mask features are slightly
+displaced by their differential refraction relative to the center of the
+mask at that hour angle.  This displacement is very small, usually less
+than 0.1 arc second.  It is very difficult to see any difference between
+two masks made with and without this feature.  It is included for those
+cases where you want to or need to make observations at high zenith distance
+where the effect of differential refraction could be noticed.  In most
+cases, and when you do not know what hour angle you will be observing at,
+it is best to leave this feature off.
+
+This feature has NOT been verified by actually observing real refracted objects
+through a real mask.  The amounts of displacement are known to be correct, and
+they appear to be in the correct directions.  Since the displacements are
+usually much smaller than a slit width, this feature remains experimental
+until someone makes and observes a mask for a fairly high zenith distance.
+
+
+Some further explanation of refraction:
+
+The atmosphere acts much like a thin lens positioned above the telescope,
+with its optic axis directed to the zenith.  All objects in the sky are
+observed to be slightly closer to the zenith than their geometrical location
+outside the atmosphere would be.  This causes the telescope effective focal
+length to be slightly less when computed from sky positions than it actually
+is as a geometric optic device, because the atmosphere itself is acting as
+part of the telescope and changing its magnification.  This is the primary
+first order effect of refraction, and has been already taken into consideration
+in the optical modeling of the telescope.  The instrument values for the
+telescope are REALLY for "telescope plus atmosphere" rather than just for
+the telescope itself.  Also, when the telescope is pointed to an object
+away from the zenith, it must be pointed slightly closer to the zenith than
+the geometric position of the object, and this has already been taken care
+of by aligning the observing mask to your alignment stars.  So, what is left
+then is the second order "differential" refraction, caused by different parts
+of the field being non-linearly displaced, and being displaced toward the 
+zenith rather than only radially, since the field of view is looking obliquely
+through the atmospheric lens.
+
+The differential refraction displacement field is a variation of magnification
+with field azimuth.  Objects toward and away from the zenith are displaced
+slightly closer to the center, and objects at right angles to the zenith
+direction are displaced slightly farther from the center.  The direction
+toward the zenith from the field center changes with hour angle, and this is
+why the hour angle is needed to compute differential refraction.  Also, during
+an observation this direction is continually changing, causing all the
+distortions to change in size and direction.  This is why, if you don't know
+the desired hour angle of observation, or may want to re-observe the mask at
+a later time when only a different hour angle will be available, using the
+average location of the objects, by turning the differential refraction off,
+will be the best choice.
+
+How big is the effect?  As a general guess, for objects above airmass 2.0,
+that is in the green part of the graphic, and over the entire f/4 field and
+most of the f/2 field of IMACS, differential refraction displacements are
+under 0.4 arc seconds, and above airmass 1.5 they are under 0.15 arc seconds.
+The general differential refraction displacement is parallel to the zenith
+direction and toward the field center.  If your slits are oriented parallel
+to the zenith direction (parallactic angle) the objects will be displaced
+along the slit, and a differential refraction correction would not be needed.
+
+The effect of the Atmospheric Dispersion Compensator on differential 
+refraction is not known and has not been modeled.  It is designed to move
+with field rotation and zenith distance, so it could partly compensate
+the differential refraction effect along with atmospheric dispersion.
+
+It has been suggested that always using differential refraction and choosing
+an hour angle of zero gives a better fit to actual field positions than
+not using differential refraction.  This might be true for fields with high
+zenith distance and restricted hour angle range such as fields that are far
+to the North.  This is NOT true for fields with a large hour angle range
+such as South circumpolar objects; it is easy to get a large mis-match of
+zenith direction with such fields, and with fields which transit at high
+altitude, although those have small differential refraction displacements
+at 0 hours, so it does little harm relative to not using the feature at all.
+
+
+Priority Supplement feature:
+
+The "Prio. Sup:" window is used to enter the extended priority coefficient.
+Normally zero, this value is multiplied by the current use count for each
+object, and the result is used to increment the given object priority.
+The intent is to allow previously used objects to be included at a
+diminished priority to fill in otherwise unused parts of the mask.
+Please note that this feature can result in objects changing their
+normal priority status if the priority is adjusted to be greater than
+the Pdecide threshold, or the MustHave threshold.
+
+As an example of the intended use, suppose the MustHave is set at -2,
+and there are a set of primary objects with priorities ranging from
+1.0 to 3.0, Pdecide is set to 10.0 and a set of background objects
+has priorities from 15.0 to 18.0.  Now, if we set the repeat object
+count to zero the primary objects cannot be re-used at all, nor can
+the already used background objects.  However, if we set the repeat
+object count to 3 and a Pri. Sup. coefficient of 1.0, then these
+already used objects can be re-used at a diminished priority up to
+3 times, allowing them to fill in after yet unobserved objects have
+been chosen.  The value is chosen based on the amount the priority
+should be adjusted on each use, and depends on the actual spread of
+priority values in the object set.  A small value will have little
+effect and the repeat count will control use.  A large value will
+put the observed object's priority behind most other objects, and
+could put it in the count limiting rather than priority limiting
+region of the effective priority exceeds Pdecide.
+
+
+The "Skywin" feature:
+
+The "options" menu in the "intgui" program allows access to the
+"Skywin" feature, an interactive window showing the areas accessible
+to the guiders and an approximate field of view of I.M.A.C.S.  This
+feature replaces the older stand-alone "pmap" program.
+
+The sky window may also be started automatically by including the
+"-k" flag on the intgui command line.
+
+In order to actually observe at any given field center position and
+orientation angle, the I.M.A.C.S. instrument must be able to set its
+internal guide cameras to suitable guide stars.  The upper guide star
+region (curved segment outlined in blue) is for the "principal guider",
+an imaging system which can guide on stars with a magnitude range of
+about 11 down to 16.5 magnitude.  The lower guide star region is for
+the "secondary / Shack-Hartmann guider" which is either a similar
+imaging system or more usually a Shack-Hartmann guide system which is
+used for both guiding and adjusting the optical figure of the Magellan
+telescope for optimal performance.  This system needs a guide star
+with a magnitude range of about 11 down to 15.5 magnitude.  This will
+actually restrict your choice of field locations, so choosing one with
+a suitable guide star is quite important.  Future versions of the
+software will actually require an appropriate guide star be selected
+before producing a Slit Mask Definition File output.  Please see
+the section on "Guide Star selection" below.
+
+The skywin feature requires star catalog information; normally it will
+come from catalog files installed locally.  See the software installation
+instructions for details.  Set the environment variable GMAPCATS to the 
+directory where you install the catalog files.  However, there is an
+alternative, the data for the default USNO catalog may be obtained by
+the Internet from a server at OCIW if no catalogs are installed locally.
+You can also use the  "-i" flag on the command line of intgui to use 
+this server instead of any locally installed catalog.  If the server is 
+not running, or the Internet is not available, please use a locally 
+installed catalog.  See "Star Catalog Server" below for more details.
+
+The environment variable CATPATH should be set to a colon delimited path
+list of all locations where the star catalogs may be found locally.
+This method will replace the use of the GMAPCATS environment variable.
+Systems installed by RPM have had the catalog directory set to
+/usr/local/etc/gcats and systems at Carnegie Observatories use the
+local server at /data1/moon/gcats.  Thus, local users might do
+"setenv CATPATH /usr/local/etc/gcats:/data1/moon/gcats" to find the
+catalogs, and similar things at other institutions.
+
+It is expected that the default catalog server URL in the program will
+be correct, but if it needs to change instructions on how to access it
+will be sent to the distribution mailing list.
+
+Depending on your installation, a script may be needed to
+properly set up the environment variables for properly finding all the
+data (optic data, guider descriptions and star catalogs) needed by
+these features.  If there seems to be a need, one may be provided.
+
+When active, the "skywin" window has its sky center position and position
+angle controlled by the values in the main GUI.  The field of view (red
+dotted square) should indicate an approximation for the currently
+selected instrument.  Within the window at the upper left there is a
+pull-down for selecting the star catalog.  It starts with the USNO-A
+catalog, as this is the one most useful in selecting IMACS guide stars.
+This catalog shows all the possible guide stars, but beware
+that some significant fraction of the faint ones (maybe over 20%) are 
+really galaxies and other non-stellar objects.  There are also close
+double stars which can confuse the guiders.
+
+The "Features" pull-down has all the fun things which the window can
+do; here's a brief run-down:
+
+N-vector -- Toggles a Green North(long) and East(short) vector, showing
+	the sky orientation.
+Pan Center -- Toggles pan mode.  When on, clicking on a sky location with
+	the <center> mouse button causes that location to become the center
+	of the display and be indicated by a blue cross.  That center
+	stays put during zoom in and out operations.  Turning this feature
+	off causes the center to revert to the telescope position which
+	is indicated by the black cross.  When on, "Pan Center" mode will
+	replace the "centering" mode discussed below.
+Star Colors -- Toggles on/off the display of stars in different colors
+	corresponding to spectral type.  It is easiest to use all black
+	stars to actually find guide stars.
+Plot Alignment -- Toggles on/off the display of reference objects, these
+	are indicated by small squares
+Plot Objects -- Toggles on/off the display of observation objects, these
+	are indicated by small x symbols
+Prin. Guider -- Toggles on/off the blue accessible region of guider 1.
+Sec. Guider -- Toggles on/off the blue accessible region of guider 2.
+Camera FOV -- Toggles on/off the red camera field of view box.
+Quit Window -- When selected, destroy the sky view window.
+
+Plotting of observed objects respects the observation repeat count.
+Symbols are sized depending on the number of objects in the list.
+
+The reference objects are all plotted, and the repeat count and reference
+selector count are used.  Active reference objects are then colored
+yellow, and inactive ones white.  The actual mask generation code can
+use additional criteria for selecting reference objects including the 
+position with respect to the center.  The plot program does not use these
+details, so its selection of active reference objects may differ from
+the set actually used in mask generation.  Reference objects shown in
+yellow are selected for selection count and the obsolete "REFSEL"
+selection parameter.  Those in yellow are then allowed to be limited
+by the new "REFLIM" parameter, which also respects the detector limits
+(depending on the use of the +a flag in maskgen).
+
+Active when not in the "Pan Center" mode is the "centering" mode.  The
+<center> mouse button will cause the current pointer location to become
+the new telescope position.  When the current telescope position changes,
+the "ReCenter" button just to the right of the "Features" menu becomes
+active.  Clicking on "ReCenter" returns the telescope position to that
+position last read from or saved to disk, and disables "ReCenter".  This
+works on positions set by the "centering" mode mouse clicks as well as
+those entered into the main window dialog boxes for R.A. and Declination.
+When a save to disk operation is done, the "ReCenter" button becomes
+disabled to indicate that the current position is the one saved to disk.
+
+As a new feature in version 2.11, the function of the center mouse button
+may be achieved by holding the shift key while clicking the left or right
+mouse buttons.  This may be useful for laptops with track-pad devices.
+
+At the right of the display are the zoom buttons, the downward pointing
+triangle zooms "in" and the upward triangle zooms "out".  Using the
+left, center and right mouse buttons on these zoom by factors of
+1.25, 2.0 and 4.0 respectively.  When zooming in, fainter stars may
+become displayed, especially in the USNO-A catalog.  By combining the
+"Pan Center" feature and zooming in/out on the guider fields, one may
+find all the possible guide stars for any field position, including 
+many which are too faint to actually use.
+
+The Camera FOV option (enabled by default) plots an approximation of
+the direct camera field, and may show the locations of the 8 chips.
+The alternate orientation used for "Nod and Shuffle" observing has
+not yet been implemented, nor has any indication in the mask making
+data files of which orientation is being used.
+
+
+Star Catalog Server;
+
+The sky window feature now implements a star catalog accessed over
+the Internet if a local disk version is not found.  This service is
+provided by the Carnegie Observatories, and is expected to be usually
+operational.  The internet catalog service will take longer than the
+local disk system, sometimes significantly longer.  This should be
+satisfactory for a small number of positions.  Also, the star catalog
+caching feature (see below) will mean that subsequent access to the
+same or very close field will be done by reading the local disk for
+the cached data and hence be quite quick.
+
+Here is a quick outline of how it works:
+1) When the sky window is opened, the local disk catalog files are
+opened; if this fails, the network use status is turned on.
+2) See if the required star data is available in a local cache file,
+and if so use that data, and skip to (5) below.
+3) If network use status is on, obtain stars by a Remote Procedure
+Call to Carnegie Observatories server; if network use not on, obtain
+stars directly from the local disk catalog files.
+If neither method can obtain stars, the sky window is closed with
+an error message.  Either a disk catalog or network connection is needed.
+4) Make local cache copy of stars obtained from either network or
+local disk catalog; to be used later in step (2) above.
+5) Sort the list on magnitude, and trim it for radius from center and
+any magnitude limit being imposed.
+6) The resulting star list is used to plot the sky window; a limit on
+number of stars shows only the brighter stars available to avoid crowding.
+
+
+Star catalog caching:
+
+All the data retrieved from the star catalog, either from the local disk
+catalog or from a network catalog server will be cached in the local
+file area.  There are currently 16 file names defined, of the form
+OCIW_catX.dat where X is a hexidecimal digit from 0 through F.  These
+are text files ranging in size from a few killobytes to several megabytes
+depending on the catalog and star density.
+
+Usually catalog cache files are stored in the local directory, however
+if your organization of data files requires it, the environment name
+CATCACHE may be defined to point to the directory where the cache files
+are to be kept.  As a special case, if it is defined as "/dev/null" the
+caching of catalog data will be eliminated.
+
+These cache files are plain ASCII text.  The first line is a header,
+containing the catalog index, center R.A. and Dec. in hours and
+degrees, field radius in arc seconds, and number of stars.  For
+each star, there is the catalog star index, R.A., Dec., Magnitude
+and spectrum fields.  The positions are accurate to 0.001 seconds
+of time and 0.01 seconds of arc.
+
+When a catalog cache is written, the cache file name used depends on
+what is already cached.  First choice will be a cache file which
+is a subset of the one being written, then an unused file name, and
+finally the file least recently used.
+
+The file use time refers to the time the file was actually used to
+provide data to a sky window display.  Each file in the file system
+has 3 times: 1) The creation date, set when the file is first written;
+2) The access date, set when it is read; 3) The change date, set when
+the file status is changed.  Since the access date is updated each time
+skymap looks at the cache, it does not indicate if the file was 
+actually used.  The creation date is preserved as the time when the
+file was created.  When the file is used, the change date is set,
+and this is the date used to find the oldest (least recently used)
+file to be replaced.  To see these dates, the -c flag in "ls" will
+display the change date; the -u flag shows the access time, and
+otherwise the creation (and modification) time will be shown.
+
+As a special feature, the status and content of the cache files
+may be displayed by using the -c flag in the intgui command line.
+
+Also, the "cacherep" utility may be used to report on the content
+of the cache files.  See its documentation below.
+
+
+Guide Star selection:
+
+Pointing the mouse to any star and clicking gets a display at the bottom
+of that star's catalog identification, magnitude and position. 
+When debug information has been requested on the intgui command line,
+more information on the guider position will be displayed.
+Clicking on a star within the guide star region which is of suitable
+brightness (currently at least 16.5 for the principal guider and 15.5
+for the Shack-Hartmann guider) will cause that guide star to be selected,
+and highlighted with a red circle around it.  If the star is not in the
+guide field or too faint, that will be noted in the information line at
+the bottom of the display, and the star will be highlighted in white.
+There is also a bright limit, currently 11.0 magnitude, which also
+is noted in the information line if exceeded.
+Clicking on the star a second time will de-select it, as will choosing
+another star.  Selected guide stars are remembered and highlighted when
+running the interface GUI sky window a second time.
+
+Click the left mouse button to select or de-select a star.  Clicking
+the right mouse button will only display a status line for the nearest
+star, but will not select it.
+
+The star with the status display shown is highlighted by a white ring,
+and one selected as a guide star by a red ring.  If you only get a white
+ring when trying to select a guide star, there was a problem, usually
+either "Faint!" or "OUT OF FIELD" shown in the status line at the bottom
+of the window.
+
+The display for the LDSS-3 instrument shows only a single very large
+guider field, and a single star may be selected within it.  This is
+handled the same way as IMACS, except that selection of a guide star
+will not be required for LDSS-3.
+
+If the center position is changed, or the orientation angle is changed,
+any selected guide stars are dropped, and must be selected again.  It
+is a good idea to select guide stars *after* choosing your center and
+slit position angle.
+
+When using the "centering" mode (see above) guide star positions are
+dropped when a newly selected center is saved to a file, and thus the
+guide stars should be selected again after the save operation.  This
+means you should not be selecting guide stars when the "recenter"
+button is active (highlighted).
+
+An automatic guide star selection feature is now available, for IMACS
+instruments only.  This feature is active when a skywin window is displayed,
+and automatically selects guide stars from the displayed stars.  A new
+selection is made if the window position is changed and an existing guide
+star is no longer available.  Your position and instrument selection should
+be made before activating the skywin feature for the automatic guide star
+feature to operate properly.  Guide stars may always be selected manually,
+or changed from the automatic selections.  The most common reason for a
+guide star to not be selected automatically for an IMACS instrument is that
+there is no star of acceptable brightness in the guider field.
+If the automatic guide star selection feature tries to find a guide star
+but fails to do so, a message is displayed to that effect in the terminal
+window which invoked intgui.  In this message, "area 1" is the principal
+guider, and "area 2" is the Shack-Hartmann guider.  Guide stars found are
+indicated by a red circle around the star as usual.
+
+Failure to select a guide star in each guider for IMACS masks will result
+in a warning upon exit from "intgui", as will omission of other required
+information.
+
+You should be sure that suitable guide stars are available for your
+selected position.  When the mask is generated, the .SMF file will
+contain a comment starting "!.OC" with information for an observing
+catalog line, containing the needed center position information, and
+the selected guide star positions in the form needed by the telescope 
+control system.  These lines from a set of .SMF files can be collected
+into an observing catalog format file using the "obscat" script.  See
+the section on "Observing Catalog utility" for details on that script.
+
+To verify that your guide stars are actually stars, you can get a small
+view of the star from the Digitized Sky Survey.  Holding the control
+key and right clicking on a star will send a request for a 1.5 arc minute
+square picture centered on that star.  For users on Mac-OS-X this is
+done by the "open" command, and for Linux users, the "firefox" browser
+is used by default.  Use the environment variable MYDISPLAY to select
+an alternate command; this command should accept a full URL as its
+argument and display a GIF image or a possible HTML error message.
+Usually your favorite web browser will be fine, or some users may
+prefer the ImageMagick "display" command.  The browser or display
+program may then edit or save the image for later use.  The picture size
+of 1.5 arc minutes is a bit larger than the field of view of the
+guider cameras.  Please remember that these pictures are oriented
+with north up, while the sky view and guider images are rotated by the
+instrument rotation and guider positioning.  Pixel resolution, scale
+and size of the image obtained depends on the actual digitized image
+data, which can vary in different parts of the sky.
+
+The "maskgen" program requires two guide stars to be selected and be
+present in the .obs file; if they are not, the "maskgen" program will
+terminate without producing a mask file.
+
+
+
+The IFU mode option:
+
+The "Integral Field Unit" allows IMACS observers to obtain spectra at
+multiple points within a small area (actually two small areas) by using
+fiber optics to sample light over an area and arrange the samples in a
+line simulating a single long slit.
+
+The two sample apertures are offset from the telescope field center by
+a little over half an arc minute.  We have added the IFU mode to the
+interface GUI to support finding the offset accurately, and determining
+the rotator interference at the instrument position angle, and to find
+suitable guide stars for the offset observation.
+
+When IFU mode is selected, a small window pops up, allowing one to enter
+the position of the offset object being observed, and which IFU aperture
+it is to be placed in.  The main R.A. and Dec. windows are disabled for
+input, and show the offset position of the telescope central axis.  The
+sky view window shows the guide star availability for the offset observation.
+
+When a .obs file is written in IFU mode, it is truncated to only include
+the telescope pointing parameters, not the slit and instrument details,
+and no object list is attached to the .obs file.  When such a file is read
+in with the IFU mode indicated on, the small window is activated, and
+the position, comments and file name may be edited.  This mode is strictly
+an aid to planning, no mask may be cut in IFU mode; the IFU itself is a
+mask, and occupies 3 mask server slots in the instrument.
+
+
+
+The MOE feature:
+
+When the Multi-Object Echelle (MOE) disperser is used, the wavelength
+range is used to select the orders of the spectrum considered rather
+than the extent of the spectrum in the dispersion direction.  The red
+end, the largest wavelength in the range selects the lowest order of
+the spectra which is considered, and the blue end, the shortest wavelength
+in the range selects the highest order of the spectra used.  It is
+recommended that you use an approximate center wavelength of each of
+the highest and lowest orders for the wavelength range.
+
+The secondary wavelength bounds (called "Detector Range") may be used
+to select an alternate extent of the spectra in the dispersion
+direction by specifying the allowed range of a single order.  This is
+intended for use by experienced echelle users; leaving those secondary
+wavelength bounds to match the primary wavelength range will compute
+an appropriate setting which allows proper overlap between adjacent
+spectral orders, and is the recommended method.
+
+Also in MOE mode, the slit length should be 5 arc seconds, the center
+wavelength is not used, and nod-and-shuffle mode is not allowed, so
+uncut lengths must be zero.  The interface GUI will set the slit length
+and disable entry of slit length, uncut length, order, center wavelength,
+extra order mode and slit extension when the MOE disperser is selected.
+Spectra are longer than half the detector height, so they cannot be
+stacked adjacent in the dispersion direction.  You will get only a
+dozen or so objects with MOE.  The slit extension feature cannot be
+used with MOE, nor the extra orders feature.  For MOE a single wing
+chip hole is made on each side rather than the set of multiple holes
+when the wing chip feature is selected by the "-w" flag.
+
+
+
+The special "Image test mode" feature:
+
+To support certain other IMACS modes such as direct imaging, or the
+use of generalized long slits, a special test mode has been added, 
+using the "-t" command line flag.  In this mode, all the multi-slit
+things have been suppressed, and the skywin window defaults to "on".
+A position and orientation may be selected, and guide stars may be
+selected.  The "Obscat" button will write the selected guide star
+positions and the selected position and orientation into an observing
+catalog entry in the specified "Obscat file" along with a selected
+object name.  Also, the observing date may be entered, and the status
+bars with rotator warnings, sunlight and twilight and moon information
+will be displayed.  This mode is intended to support the creation of
+observing catalog and guide star information for observations which
+do not use the rest of the multi-slit creation steps.
+
+
+
+The "GISMO" feature:
+
+This feature is actually a very sophisticated mask, occupying all the
+mask server slots, and using its own mask and sub-mask selection
+mechanism.  It re-images 16 slices of the center of the field of view
+into 16 separate areas in the IMACS f/4 camera field, allowing spectra
+of a crowded region to be obtained with less mutual interference.
+
+Since it uses separate masks, it is treated as a separate instrument
+rather than a special case of the f/4 IMACS instrument.
+
+The re-imaged fields are arranged along two lines in the cross
+dispersion direction, in such a manner that when their slits are 
+cut in a cylindrical mask, their position approximates that of 
+slits cut along a line across a spherical mask.
+
+The masks used are indeed cylindrical, and each such physical
+mask accommodates 5 logical masks, each of which may be placed
+in the observing position by a slide mechanism, moving the mask
+along the axis of the cylinder.
+
+It will be seen when designing masks that the individual sub-
+fields are inverted (rotated about 180 degrees) when mapped
+onto the actual mask.  This is due to the design of GISMO's
+transfer optics, and is completely normal.
+
+Each individual mask design and mask generation run produces a
+logical mask, and up to 5 of these will be combined on a single
+physical mask blank in the maskcut step.
+
+Since the GISMO front end system is mounted in the mask holder
+system, and is itself quite large, no other regular IMACS masks
+can be present when GISMO is installed.  The ability to have 5
+logical masks on one physical GISMO mask may be thought of as
+a similar feature to having up to 6 IMACS masks available
+during observing.
+
+When selecting the instrument in the intgui, there are several
+different GISMO features implemented.  Selecting GISMO with the
+f/2 or f/4 cameras will produce standard observing masks.  The
+choice of camera will determine which dispersers are available
+in the disperser sub-menu.  There are two additional special
+instruments which are really special GISMO operational features,
+the "GISMO MNS" instrument is the Macro Nod-and-Shuffle special
+feature support, and the "GISMO AP" is the GISMO aperture mask
+support feature, both of which are described below.
+
+
+GISMO special features:
+
+  Slit tilt feature
+The slit orientation may be defined by its position angle on the
+input field as back projected, or the slit itself may be normal
+to the dispersion direction as re-imaged onto its displaced
+position on the focal plane.  The latter is the usual default
+practice, but some uses may need to have the slit position
+defined on the sky.  If the slit shape is RECTANGLE and there
+is a non-zero uncut length, the slit orientation is taken to
+be accurate in the input field.  Also, the -p command line flag
+to maskgen will force the input positions to be used.  Please
+NOTE that the default will result in improved data reduction
+performance; use the accurate slit angle feature only when it
+is actually needed for the observation.
+
+
+  Macro Nod-and-Shuffle
+GISMO may be used in a special mode in which the detectors are
+divided into 7 sections in the cross-dispersion direction and
+the first, third, fifth and seventh ones are "blanked out" and
+cannot have objects cut into them.  Objects are cut into the
+other sections, and during observations the field is taken on
+an aligned set of objects, and then the telescope is shifted
+to a non-aligned (sky) position while the images are shuffled
+on the detector to allow a sky exposure.
+
+Using the "GISMO MNS" instrument allows support for this mode,
+with the appropriate gaps and spectrum support built into the
+maskgen step.  Due to detector orientation, this mode is only
+useful with the f/4 camera and dispersers.
+
+
+  Aperture Mask
+When doing alignment on alignment objects, the standard IMACS
+observing protocol is to take a short exposure through the mask
+in direct mode and one without the mask to find the alignment
+objects.  Using GISMO, there is no "without the mask" possible,
+as you need the image splitter and no direct interference.
+What is needed is a special logical mask with clear holes around
+the projected image of each split field piece.  The special
+instrument "GISMO AP" will generate such a logical mask.  When
+used the only intgui fields active are the position (normally
+regarded as commentary as it does not affect the mask), the
+name and the alignment box size.  The alignment box size is used
+to define the extra space around the split section, which is
+half the box size (in arc seconds) up to a maximum of 2.5 arc
+seconds, which is the recommended default.  You will need to
+make one such logical mask, and include it in each physical
+mask that is cut.
+
+
+Cutting GISMO multiple masks with "maskcut"
+
+Each GISMO mask contains up to 5 independent sub-masks, which
+are individually selected by a slide mechanism in the instrument.
+These sub-masks are designed independently and each has its own
+.obs file and .SMF file.
+
+When "maskcut" is run for GISMO masks, up to 5 masks are cut
+into each physical mask blank, in the order given in the command
+line.  Usually, the "maskcut" command will contain exactly the
+five .SMF file names to be used to construct the mask.  For using
+the standard alignment procedures, one of these masks should be
+an Aperture Mask created by the "GISMO AP" special feature as
+explained previously.
+
+
+
+Change of Internet Name:
+
+Carnegie Observatories is changing its web address from "ociw.edu" to
+"obs.carnegiescience.edu", and the old address will cease to function
+in June 2010.  All of the references in the program to the old web
+address are being updated to the new one.  This will require all users
+to use the updated software before June 2010.
+
+
+
+How "maskgen" operates:
+
+Here's the brief outline:  The "maskgen" task reads the <maskname>.obs
+file it found in its command line argument, checks for errors, and then
+computes the slit mask position and detector position of each object
+requested for the mask.  When spectra conflict, objects are removed from
+the set based on number of conflicts and priority until no more conflicts
+remain.  The description of the mask to be made including all the
+objects which have been selected to be on the mask is sent to a Slit
+Mask Definition File, and all objects with their use counts are written
+in a <maskname>.obw file in object file format.
+
+There are several more details.  The "maskgen" task must be able to find
+and read the "opticdef.dat" file, usually by having this file or a symbolic
+link to it in the current directory.  If the optic definitions are not
+found, poor to non-existent results will follow.  Starting with version
+1.20, maskgen will stop execution if the opticdef.dat file is not found.
+
+Starting with version 2.07, the "maskgen" task requires that an instrument
+and a disperser have been selected in the .obs file.  If these are not
+present, an error message is issued and no processing done.  Also, unless
+the "-m" flag has been entered, a check is made to verify that the file
+name within the .obs file is the same as the actual directory name of
+the file.  This feature will catch mistakes in renaming or copying the
+.obs files.  When the file is made by the "intgui" task, these names
+are created correctly.
+
+The "maskgen" task also checks for suitable guide stars, and if not found
+will reject processing the mask.  For the quick look operation (using
+the -q flag) as is done with the "maskgen" button from the "intgui" task,
+this rejection is not done.  However, if -q is used, no .SMF output file 
+will be written, so no mask can be created.  To actually make a mask, 
+suitable guide stars must actually exist and be in the .obs file.  Error 
+messages are produced if a guide star is missing or is not in a possible 
+guider location.  
+
+Object positions which are clearly off the mask, having too great an
+angular distance from the selected center, are marked inactive right
+away.  So are objects which have a use count exceeding the current
+repeat allowed count (separately computed for observed objects and
+reference objects).  If the reference select parameter is over 1, a
+count of reference objects is referred to and only 1 of n reference
+objects is allowed to remain.
+
+When the ADC is not present, reference objects more than 12 arc minutes
+from the center are suppressed. Due to poor image quality, such stars
+do not work reliably with the alignment procedure.
+This restriction does not exist now that the ADC is in use.
+
+Object positions which would be near the mask edge in the vicinity of
+the clamps used to hold the mask during laser cutting also need to be
+suppressed at this point.  These regions are near the corners of the
+detector in the f/2 camera.  All objects, regardless of priority in
+these regions are dropped, including reference objects.  These exclusion
+regions are seen in the "ncplot" display.
+
+All objects which survive those tests have their spectra positions 
+computed in the detector plane.  Any observed object (not reference
+objects) whose spectrum as defined by the wavelength limits falls off
+the detector is eliminated.  If we are checking for extra order images,
+then image spectra for each object are also computed for the conflict
+tests.  Objects are sorted based on detector position to aid the
+finding of conflicts.  Spectra are artificially widened at this point
+to implement the "overlap" feature, by subtracting half the overlap
+allowance from each side of each spectrum.
+
+A check is also made for unusual object parameters.  Since objects are
+allowed to have individual features such as slit width and length which
+differ from the global default values, about 10% of them are allowed to
+have strange parameters, but when a large fraction of objects have
+unusual parameters, a warning is given and further processing is
+omitted unless a special "-c" flag was present on the command line.
+Such things as too small a width (under 0.3 arc seconds), slit length
+less than slit width, negative slit width or length, negative use
+count, priority under -10 or over +30, object names of less than 2
+characters, unknown shape codes, large slit tilt angles and a few other
+things are flagged.  The execution override flag is present when
+maskgen is invoked from intgui in the test mode basis, and the warning
+messages are not suppressed when operated in this override mode.
+This feature exists mainly to find object files which are poorly
+formatted and result in slits which are not what is really intended.
+
+When checking reference objects for on-detector, and for conflicts with
+other reference objects, the direct image positions rather than their
+spectra positions are used.  Spectra of reference objects are used to
+find conflicts with program objects.
+
+The -a flag has been used to allow automatic removal of reference
+objects which were off the detector, or conflicting with others; this
+is now the default.  Using a +a flag will keep all reference objects
+and not delete those off the detector.  The -a default is needed to
+use the "Ref. Limit" feature to limit the number of reference holes.
+
+If selected, and the data is present in the optical definitions file,
+the detector gaps are modeled by virtual spectra of infinite priority.
+These are put into the object list as virtual objects for the conflict
+algorithm, but produce no actual object output for the mask files.
+
+A scan of all the computed spectra is made to find which of these
+spectra interfere with each other in detector space.  Potentially, very
+many conflicts will be found, especially in crowded fields.  We also
+look for duplicate positions, defined as being within 1/2 the default
+slit width in both X and Y dimensions on the mask.
+
+Obvious conflicts such as objects with spectra off the detector, conflicting
+with a reference object, duplicate objects and the like are eliminated
+first.  Optionally, (the -a flag), reference objects which have their
+images off the detector or conflicting with other reference objects may be
+automatically removed also; otherwise they are considered must-have objects.
+
+Once conflicts have been found, a conflict resolution algorithm then
+runs to eliminate these conflicts by eliminating objects from the set
+of "active" objects.  This runs until either no conflicts remain, or
+none of the conflicted objects are eligible for removal.  This means
+that such an object is either a reference object, or has a priority
+over (numerically less than) a "must have" value.
+
+Conflicts remaining after the resolution algorithm, such as reference
+objects falling off the detector, or must-have objects conflicting are
+listed for the user's consideration.  It is always a good idea to check
+this list to see if these conflicts actually cause a problem.  It may be
+necessary to change the "must have" priority, or to remove some objects
+or change their priorities to achieve a clean mask.  Conflicts among
+must have objects and reference objects are the user's responsibility.
+
+After conflict resolution, the object set is written to the <maskname>.obw
+file, and then the used and unused lists are separated.  If the "r" flag
+has been set, the used list is re-ordered to reduce the sum of distances
+between adjacent objects in mask space.  This same algorithm may be
+applied in the "maskcut" program, and we recommend doing it there.
+
+In addition to the <maskname>.obw file, a <maskname>.obx file may be
+created containing only the objects used in the mask.  This file has the
+same form as the .obw file, and is created if the "-f" option is specified
+on the command line.
+
+In-line comments in the object list files are replicated in the .obw and
+.obx output files.
+
+Finally, the list of objects being used on the mask and all the other
+needed information is written to the <maskname>.SMF file, which is the
+principal output of mask generation.  This step is omitted if the "quick
+look" feature (the -q option) is in effect; that happens if the "MaskGen"
+button in the interface GUI is used to run maskgen.
+
+
+
+Conflict Resolution:
+
+(Wait!  How's that "conflict resolution" done?)
+There are several possible algorithms.  We have two available, one based
+on the conflict count, and the other based strictly on priority.
+
+Priority values work like magnitudes with smaller numeric values being
+favored ("brighter").  In the documentation I have tried to use terms
+like "high/low" to indicate priority and "less/greater" to indicate the
+numeric value of that priority.  Think of the priority values as you
+would magnitudes with higher priority = brighter = smaller numbers.
+Many users use actual object magnitudes in the priority field.
+
+There are two parameters, expressed as priority values, present in the
+.obs file.  First is the "MustHave" parameter, which has a default value
+of -2.0.  Any object of this priority or more (numerically smaller) will
+not be removed because of a conflict with another object.
+Second is the "Pdecide" parameter, which decides between the two
+conflict resolution algorithms.
+
+First, the objects are carefully inspected to remove any which have
+spectra which would fall off the detector, and any which are duplicated
+by another object.  Duplicate objects are removed by priority, the
+lower priority one being dropped; and if equal priority, by order in
+which they were read.
+
+Second, any object with priority lower than the Pdecide which conflicts
+with an object of priority higher than Pdecide is eliminated.
+
+In all of these decisions, when two objects are otherwise similar,
+having the same priority and conflicts, the final choice is by the
+order in which they were read in initially.  The one read earlier will
+override the one read later.  This is true for duplicates, and both
+kinds of conflict resolution algorithm.
+
+The algorithm based on conflict count runs first, and is applied only
+to objects with a lower priority (numerically greater) than Pdecide.
+
+In a loop, choose the "most conflicted" object as the next one to be
+removed.  Do not choose any reference object, or any object with
+priority over Pdecide.  Keep track of the number of conflicts which the
+candidate object has, and its priority.  If an object is found with
+more conflicts, that's our new candidate.  If an object has the same
+conflict count, choose the one with the lower (numerically greater)
+priority.  When all objects have been scanned, if none has been chosen
+the loop terminates.  Otherwise, the one which has been selected is
+removed from the active set, all those with which it conflicted have
+their conflict counts reduced, and all those conflict data are removed,
+and we loop back to choose another object.
+
+Note that if Pdecide is a sufficiently low priority, and no objects are
+of lower priority, this algorithm has nothing to do and terminates
+immediately after one loop to verify no lower objects exist.
+
+The algorithm based on priority runs second, and applies to all objects.
+The object list is scanned in priority order, from the highest priority
+to the lowest.  When an object is found to have any conflicts, all those
+conflicts are removed unless they are either MustHave objects, or
+reference objects which do not get removed.  The only removable objects
+with which a conflict may exist in this algorithm must have lower
+priorities, as if any were higher, this object would have been removed
+earlier in the scan for its conflict with a higher priority object.
+During this scan, objects with equal priorities are scanned in the 
+order in which they were initially read in from the object data file.
+
+After the final priority based scan, all removable conflicts have been
+resolved, and if any remain they are with MustHave objects.  The object
+list is restored to the order in which it was read from the data file.
+
+The automatic slit extension feature is implemented after all conflict
+resolution has been done, and all objects have been selected.  It will
+take a relatively long time to process, usually longer than the conflict
+resolution process.  It is recommended that it be used only after all
+object selection experiments have been done, and you are satisfied with
+the set of objects selected.  In this regard, the feature in "intgui"
+which allows a test run of "maskgen" will suppress the slit extension
+feature for such tests.
+
+Each end of object slits is extended until it would conflict with
+another feature, either a reference object spectrum, a detector edge,
+or another slit.  When two slits are being extended into the same
+space, the program attempts to enlarge each one equally.
+
+It is recommended that when slit extension is used, the "Overlap pixels"
+parameter be made a moderately large negative value, perhaps -5 to -10
+since a small misalignment in the disperser can cause spectra which
+are close to shift slightly.  Also, when reducing data which has the
+extended slits, it may be helpful to slightly reduce the amount of
+sky used at the edges which are near other spectra.
+
+Slit extension is available in both IMACS and LDSS instruments, with
+the exception of certain special modes; it cannot be used with the
+Multi-Object Echelle disperser which requires a fixed length slit,
+nor in nod-and-shuffle mode which requires all slits be default size
+and have an uncut length.
+
+
+Examples of how to use conflict resolution and priority:
+
+1) To always resolve conflicts in favor of the object appearing first
+in the input list:
+    Set all priority values the same (default is zero).
+    Set pdecide numerically greater than that priority value (default is 2.0).
+
+2) To always resolve conflicts by priority number, with lesser numeric
+values favored over greater values:
+    Enter priority values for all objects, smaller numeric values favored.
+    Set pdecide numerically greater than the numerically greatest priority.
+
+3) To maximize the number of objects used, by favoring those with
+lower numbers of conflicts:
+    Set pdecide numerically less than the highest or default priority,
+    usually to -2.0 or the must_have priority.
+
+4) To favor high priority objects by priority, yet fill in as much
+as possible with lower priority objects:
+    Enter priority values for all objects, smaller numeric values favored.
+    Set pdecide numerically greater than the favored priority values, yet
+    numerically less than the priorities of the lower priority objects.
+
+5) Use magnitudes for priorities, always favoring brighter objects:
+    Set pdecide to a very faint magnitude, for example 30.0.
+
+6) Use magnitudes for priorities, favoring objects brighter than 16.5,
+while filling in with fainter objects when possible:
+    Set pdecide to 16.5
+
+
+(What's that plot that shows up at the end of maskgen???)
+Oh, that's just a debug thing that was going to be turned off, but
+some users thought it was moderately useful.  There are two views
+available, the mask space and detector space (careful here, the
+detector locations are imaged and possibly reflected depending on the
+camera used).  For the detector view, each spectrum is outlined with
+red dots at the red end, blue dots at the blue end, and a green dot at
+the center wavelength, and blue lines drawn between.  These thin
+"rectangles" should not overlap.  When extra orders are selected, there
+are also green outlined image spectra present.  When detector gap support
+is selected, the gaps are plotted in the detector space.
+
+The center wavelength of the spectrum has been changed from the center
+wavelength specified for the disperser to the mean of the given wavelength
+passband ends.  This is also the wavelength used for computing the
+actual object position on the mask, and for the differential refraction
+option (when active).
+
+The mask location has green dots at each object location, and blue
+shapes to scale showing the slit and hole locations.
+
+As usual with the debug utility window, re-centering is by the center
+mouse button at any point in the field, zoom in/out is on the in, out
+buttons with left-center-right mouse buttons giving 1.25-2.0-4.0 factor
+respectively.  The re-center button sets the center back to origin.
+
+As a new feature in version 2.11, the function of the center mouse button
+may be achieved by holding the shift key while clicking the left or right
+mouse buttons.  This may be useful for laptops with track-pad devices.
+
+Using the "-n" command line flag when running maskgen allows the
+object name to be displayed above each object in the plot; that's
+the spectrum center location in the detector view, and the mask
+feature in the mask view.  The labels are a fixed size, and will
+overwrite each other if zoomed out too far; zoom in to see them
+displayed better.
+
+For those who really don't want that window to show up, or who wish to
+use maskgen in a script, the "-s" command line flag will skip the plot.
+
+
+(What are those small holes beside my slit pattern?)
+Those holes support the "wing chip" feature.  Two small CCD chips are
+fixed to the sides of one of the science data arrays.  They may be 
+illuminated by night sky light coming through those holes.  The images 
+of night sky emission on the chip can be used for active instrumental 
+flexure compensation.  None of this light falls on the science data 
+array, so its operation should be invisible to the user.  
+In practice, the active flexure control has not been needed, as the
+open-loop corrections work well.  The newer detector array thus has no
+wing chips installed.  Thus, the default has been changed to not add
+these holes.  If needed, one may enter the "-w" flag to maskgen to
+add these holes.  The holes are absent when nod-and-shuffle support 
+is active, that is when the uncut length of the default slit is 
+non-zero, or the nod-and-shuffle feature of the f/2 camera has 
+been selected.
+
+
+
+What "maskcut" does:
+
+(Please note that we now prefer to have the "maskcut" program be run at
+Las Campanas (for IMACS masks), and that the .SMF file be the one sent 
+to the mountain.  This explanation is for completeness, and indicates 
+how you can test whether the mask can be successfully cut.  It is not 
+necessary for the user to run "maskcut", but it can catch some errors.)
+
+Notwithstanding the above, it will be necessary for the user to use
+the "maskcut" program for those instruments such as LDSS-3 and GISMO
+which cut multiple .SMF files into one physical mask.
+
+There are several ways to plot the mask data, this one plots the mask
+slits and holes as physical holes in a metal mask using a high powered
+Infra-Red laser mounted in a machine tool enclosure.  You should think
+of this as a machine tool operation rather than as "plotting".
+
+The "maskcut" utility takes as its command line argument a SMDF file
+specification or the "maskname" portion of it.  A file of numerical
+control machine commands is then produced which will be used on the
+laser cutting machine at Las Campanas to produce the actual metal
+slit mask to be used during observing.
+
+If the .SMF file has been produced by "maskgen", it is most probably
+fully correct.  However, "maskcut" does do a little checking on the
+data it receives.  Any mask feature which would be off the cutable area
+of the mask or too near the holding fixtures is deleted, usually without
+any notice (unless you look for that little error message).  Then, a
+file of machine commands is produced.  That file contains all the
+commands to cut slits and reference holes, to engrave the mask name and
+observer name at the "top" of the mask, and to cut the mask position
+definition slots and bolt clearance holes around the rim of the mask
+for mounting it in the instrument.  It is important to cut these slots
+at the same time the slits are cut to insure accurate centering of
+the mask features at observing time.
+
+The .SMF file is a pure ASCII text file, and can be edited; however
+you MUST know what you are doing if you change it.  While it may be
+possible to do many creative things, you can run onto unforeseen
+consequences.  Inserting, removing or changing mask features should
+only be done with great caution.  Mistakes, or even intentional added
+holes CANNOT be covered with tape, since the tape will not survive the
+internal environment, low humidity and compressed air actuators in the
+mask server mechanism.  Please be careful of editing the .SMF file to
+place data from several separate fields on the same mask.  Also, please
+check any conflicts with your "must have" priority objects with each
+other and with reference holes.  Remember, an extra hole cannot be
+erased after the mask is cut.  Also, be aware that a checksum and signature
+are generated by maskgen at the end of the .SMF file, and any editing
+will produce a warning message when the .SMF file is read.
+
+To improve the speed of mask cutting, "maskcut" does an optimization to 
+the order of cutting for the features in the mask.  This is an example 
+of the "traveling salesman problem" of minimization theory, so what we 
+do is make a significant improvement to the path length, but do not try 
+very hard to reach an optimum.  Improvements of about 80% or more are 
+routine, and the result is probably within 2% of an actual optimum.  
+Since we are just saving machine tool time, this is plenty good enough.  
+This option is now the default, to turn it off, you may enter "-r" on 
+the command line.
+
+In mask cutting, the default is to implement the correction of the mask
+dimensions for the temperature difference between the cutting operation
+and observing.  Masks are cut in the lab at a temperature usually about 
+8 degrees C or more warmer than the usual observing temperatures, and a 
+large mask can have thermal expansion which is almost noticeable.  The 
+observing temperature defaults to 12 C, and may be edited in the .obs 
+file or the .SMF file.  Use of this feature is a good idea on IMACS 
+masks, but for several reasons it should NOT be used on the smaller 
+LDSS masks.  The default operation is to use thermal expansion 
+compensation on IMACS masks, but not on LDSS masks.  This thermal 
+compensation may be turned off by the "-e" flag on the command line.
+
+Masks are physically identified by engraving on their surface the name
+of the file which created them, the observer's name, the creation date
+and an optional serial number assigned by the automatic mask submission
+and data base system.
+
+The output file from "maskcut" is "I<maskname>.nc" -- and yes, that
+is a peculiar way to name things.  The initial "I" is to clue the
+machine tool operators in to the fact that this file will need a
+"IMACS" mask blank to be loaded.  The same laser machine will be used
+to cut other instrument's masks, using different mask stock.  The final
+extension of ".nc" is the standard thing expected by the machine tool
+software.  
+
+When multiple masks are cut into a single blank, the maskname is not
+a part of the output file name; a specially generated name is used
+instead.  This defaults to a date based format, "LyyMddnn.nc" where the
+leading L is literal, yy is the year, M a Hexidecimal month, dd the
+day number, and the .nc suffix is standard.  Using the -b flag, the
+base name specified can replace the "LyyMdd" part.  This naming feature
+may be used by scripts invoking maskcut automatically as part of the
+mask generation automation data base project.
+
+The output file ending in .nc is what is needed to actually cut the
+mask.  That file will be made at Las Campanas (for single masks), and 
+should be saved along with the mask.
+
+An estimate of the time required by the laser machine to cut the mask
+is computed from the .nc file and stored at the end of the .nc file
+by "maskcut".  The same computation is done by "ncplot" which will
+display a detailed table of times required for various kinds of
+motions and the number of segments of each motion.
+
+When a "long" slit has been specified, and that slit is longer than
+an amount given in the "maskcut.cfg" file (currently 40 mm.), it is
+split into two parts with a small (currently 0.4 mm.) gap in the
+center.  This is needed for the mechanical integrity of the mask
+itself; too long a slit would allow greater than acceptable bending
+of the mask.  This is done automatically in mask cutting, and should
+have no impact on mask design; the .SMF file may specify any slit of
+any length, and gaps will be added.  This is done recursively, if a
+part of a split slit is still too long, it too is split in the middle
+until the parts being cut are no longer over 40 mm in length.
+This has the side effect that the .SMF file does not show where these
+gaps will fall for data reduction.  If needed, the gap positions can
+be determined by the length and gap size parameters for any slit.
+
+
+Cutting multi-masks:
+
+Although IMACS masks are each cut into an individual blank, masks
+for LDSS-3 are cut with up to 7 masks in a single blank, and then
+the individual masks are separated from the blank.  The accepted
+procedure is for the user to supply .nc files created with "maskcut"
+for the masks needed.  The easy way to do this is to list all the
+masks in a single "maskcut" command, which will produce .nc files
+for as many cutting procedures as will be needed.  It is possible
+to use a wild card file specification to "maskcut" to specify all
+the needed .SMF input files.
+
+Masks for GISMO will contain the data from 5 .SMF files, and the
+user must combine them realizing how the GISMO observations will
+be done; it is difficult and time consuming to change the mask, so
+changes during a night should be minimized.  Also, each mask will
+need to have an aperture mask as one of the 5 positions to properly
+complete the alignment.  You will need to run "maskcut" for each
+GISMO physical mask, specifying the desired .SMF files in the order
+in which they will appear on the mask.
+
+
+Things to know about that mask:
+
+The mask is made from a spherical shell of 0.012 inch thick stainless
+steel.  The spherical radius of 1236 millimeters corresponds to the
+focal plane curvature of the Magellan telescope.  The shell curvature
+imparts substantial rigidity to the mask over what a plane sheet of
+metal would have, but they are still fragile and easily damaged.  This
+material is only slightly thicker than a common beverage can.
+
+However, 0.012 inches is about 300 microns, and that is about one
+arc second at the focal scale; so a slit of one arc second width is
+being cut into a piece of material which is about equally thick.
+The laser beam cutting the hole is about 0.002 inches or 50 microns
+in diameter, and it cuts with pulses of laser energy rather than a
+continuous beam.  This limits the size of the smallest features which
+can be cut in the mask.
+
+When properly cut and installed, masks should be mechanically aligned
+to a fraction of an arc second.  However, there are 3 position defining
+pins and slots for them in the mask, and they are at exactly 120 degree
+intervals around the rim.  So a mask could be miss-oriented in two other
+positions 120 degrees away from the desired one; this will be quite
+obvious in actual use.
+
+
+The "ncplot" utility:
+
+Mostly written for debugging and visualization, this utility is also
+intended for the people who will be cutting the masks to see the tool
+path generated.
+
+Given a command line input of the mask name (or the file specification),
+this program produces a plot in a terminal window of the tool motions
+from the .nc file.  These are color coded; gray for movement with the
+laser off, black with laser on at cutting strength, green for laser on
+at engraving strength, and red for laser on, cutting, and at slow speed.
+The mask boundaries are shown in blue, and clamp avoidance areas orange.
+
+As usual with the debug utility window, re-centering is by the center
+mouse button at any point in the field, zoom in/out is on the in, out
+buttons with left-center-right mouse buttons giving 1.25-2.0-4.0 factor
+respectively.  The ReCenter button sets the center back to origin.
+
+As a new feature in version 2.11, the function of the center mouse button
+may be achieved by holding the shift key while clicking the left or right
+mouse buttons.  This may be useful for laptops with track-pad devices.
+
+The tool path is not the area cut out; remember that the beam of the
+laser has an effective tool diameter of 0.002 inches or 0.050 millimeters,
+so a larger area will be cut than the tool movements show.  There is
+a scale bar in the lower right of the display to show the actual size
+to which things are displayed.
+
+This utility is intended to detect any problems with the .nc file
+before actual mask cutting is done with it.  For example, it will
+easily show if you used the "-r" option in "maskcut" to not optimize
+your cutting path.
+
+One useful option of "ncplot" is the "-t" option, which displays a
+short table giving the expected times and path lengths for each
+cutting mode and their total.  Those times are derived from the
+programmed feed rates and distances; known pauses are added, and
+mechanical acceleration and deceleration are estimated.  This estimate
+should be accurate within a few minutes for most masks.  The same 
+computation is done in "maskcut" and an estimate is appended to
+the end of the .nc file.
+(This option is now the default, use -t to remove the report)
+
+The "ncplot" utility will produce an error message if it detects any
+syntactical errors in the .nc file.  It is not as clever at this as
+the actual machine tool, but if it finds an error, that should probably
+be fixed before using the .nc file in actual mask production.
+
+
+Observing with your mask:
+
+Your mask(s) will be loaded into the IMACS mask server which can hold
+up to 6 masks at a time, each one in a separate frame.  We have several
+extra frames, so more masks can be in frames and ready to be loaded;
+it does take a while to actually load the masks into the server.
+Once loaded into the instrument, the mechanism can change between
+them within a minute.
+
+Although we accurately cut and position the masks, and accurately
+drive the guiders, there are slight errors in all the mechanical
+movements which cause your sky objects to be miss-aligned by an arc
+second or so when the guide stars have been properly set up.  An
+alignment procedure using a direct image taken to find the reference
+objects in their square holes will be used for the final alignment
+to get all those objects shining through their slits.  It helps if the
+reference objects are of sufficient and similar brightness to allow
+this procedure to be done quickly.
+
+
+Observing Catalog utility:
+
+With version 1.98.36 and later (December, 2005), the maskgen program puts 
+a comment in the .SMF file which includes the data needed to make lines in 
+an observing catalog 
+(See http://users.obs.carnegiescience.edu/clardy/imacs/maskmaking.html
+for a link to the observing catalog format).
+To further aid this, a script "obscat" is now included with the
+software distribution.  This script takes the names of your .SMF files,
+finds the needed comments in them, and constructs an observing catalog
+file from them.  In addition to the file names, some flags can be
+specified.  The -f<name> flag will allow specification of the catalog
+file name, without it the default name is <username>nnn.cat where the
+nnn field is a numeric field producing a unique file name.  The -n nnn
+flag specifies a starting line number for the catalog, 0 is used as a
+default.  The -c<name> field specifies the line name prefix which is
+used to prefix the line number, default is null.  The resulting catalog
+file may be taken to the telescope, and is useful in automatically
+obtaining the correct instrument rotation mode and offset.  An example
+command line might look like this:
+    > obscat -f lcomasks.cat -cKDC *.SMF
+For online hints, use  "obscat -h".
+
+
+Cleaning up your mask files:
+
+For each mask, an .obs file is created, and from it the maskgen and
+maskcut processes create the .SMF, .obw, .obx and .nc files.  Those files
+can be easily removed by using the "mgclean" utility script.  Simply
+specifying the name of the .obs file to the "mgclean" script will
+allow it to delete the other files.  They may be re-created by running
+the maskgen and maskcut applications later if needed.  The ones actually
+used for observing should be kept, but tests, wrong guesses, and other
+practice files can be easily eliminated by this utility.
+
+
+The "smdfps" utility:
+
+NOTE:  The "smdfps" utility is NOT AVAILABLE in MAC-OS-X distribution.
+This small utility to produce a PostScript file containing a printable
+plot of the mask is available, but lightly supported.  It uses the
+"pgplot" package to generate a PostScript file with the mask name as
+the file name and a ".ps" extension.  Adding a "+n" flag before the
+mask name will put object names on the plot adjacent to the features.
+Please note that the "pgplot" package must be installed on your machine,
+see:   http://www.astro.caltech.edu/~tjp/pgplot/
+for details on, and instructions for downloading and installing the
+"pgplot" package if needed.  (You probably already have it, pgplot is
+the most common graphics package for astronomical use).  To check if
+you have it, try "setenv | grep -i pgplot"; you should see a proper
+definition of PGPLOT_DIR, and it would be good if that definition also
+showed up in your LD_LIBRARY_PATH definition.
+[The "setenv" command is for the cshell and its variants.  In another
+shell, try "echo $PGPLOT_DIR" to see if it is defined.]
+
+
+Cacherep utility:
+
+The sky map function stores its retrieved star catalog data locally
+in a data cache on the local disk, as described [above?].  The data
+may be in the current directory, or in the directory named by the
+environment variable CATCACHE.  You can also set CATCACHE to be
+"/dev/null" to not do any disk caching of star catalog data at all.
+
+As an aid to the user, the "catcache" utility may be used to find
+and display this cached data.  It will use the current directory
+or CATCACHE just as the sky map does.  The basic command line input
+is a file name or more commonly the file number to be examined.
+If no file name or number is given, it is prompted for, and if no
+name or number is given at the prompt, all available cache files
+will be reported.  For a specified single file, or a set of files,
+a detailed report of the position, catalog, star count and field
+size is given.  For an "all files" request, just an indication of
+which files exist is given, or with a "-v" flag, a brief single line
+report of each of them is shown.
+
+If desired, the -s flag on an individual entry request will show
+the data for all the stars.  This is usually a LOT of data at one
+line per star for several thousand stars.  Save it to a file for
+analysis, or use the "| more" pipe to look at the first several.
+
+
+
+Please Note that we now supply a "faq.txt" file, containing some useful
+information and hints for mask design and observing.  That file should
+be used to supplement the information contained here.  Also, if you ask
+a question which is answered there, you will be reminded that you should
+have read the FAQ first -- so please do that now.
+
+If you ask a question which was covered here, you may also be reminded
+to RTFM (for "Read The Fine Manual").  This file is updated for most
+new releases of the software, and will usually contain the latest and
+best information.  Even experienced users (even the author) should
+re-read those sections which the distribution letter indicates have
+been changed, updated and improved.
+
+
+Release versions:
+
+Each software release has a release version number, and all the major parts
+(intgui, maskgen, maskcut, ncplot) have individual version numbers.  These
+are incremented when new features are added, bugs corrected, and other code
+improvements are made.  For each part there is a current version number and
+a minimum acceptable version number, and these are maintained in a file on
+the ftp.obs.carnegiescience.edu server.  When any of these software programs
+begins execution, it will check over the Internet to find the latest release 
+and version numbers.  If the running software is not the current release, a
+message will be displayed advising what the current release is, and that it 
+is available from ftp.obs.carnegiescience.edu.  If the running software has 
+a version number less than the minimum acceptable, the program may ask if 
+it should continue, or may simply exit.  This feature protects users from 
+executing software which may have errors, or not be able to produce a mask 
+acceptable for observing.  For this feature to work properly, the machine on 
+which the software is executed should have an Internet connection enabled.  
+Also you may notice a slight network delay at times when starting one of 
+these programs.  Also, if a newer or corrected version of a program has 
+been provided, a message is given identifying that as a "beta" version, 
+newer than the version in the current release.
+
+
+File checksums and signatures:
+
+Starting with release 2.04, files created by mask generation software
+(all the .obs, .SMF, .obw, .obx, .nc files) will have at their end a
+comment record containing the release number of the software which
+produced them, a checksum of the file content, and an encrypted signature
+of the software itself.  This will enable parts of maskgen which read
+these files, associated utility programs, and future applications to
+verify that the file content is valid, and that it was produced by an
+authorized program.  In the future, it will be possible for mask generation
+and its associated utilities to produce ugly error messages and even to
+refuse to process data files which have been tampered with, or have been
+produced by modified versions of the mask generation software.  Please
+use only genuine OCIW software, and do not use imitation products.
+Full support is only available for problems with files which have valid
+checksum and signature present.
+
+The "maskgen" task will refuse to accept any .obs file without a proper
+checksum, and "maskcut" will refuse any .SMF file without a valid checksum
+and which was not produced by sufficiently recent software.  This is done
+so that bugs in older versions which have been fixed cannot continue to
+cause problems.  Only "intgui" will read an arbitrarily old input file, or
+one with known errors, since it is designed to save a partly created .obs
+file and resume editing it later.  Using "intgui" to read an altered file
+is permitted, and the latest "intgui" will be able to write a corrected
+and acceptable output .obs file.  For those users who wish to use a script
+to edit the .obs file directly, using "intgui" with the -r command line 
+switch will both read and write the file, and if there are no detectable
+errors, the file will be updated without an interactive window needed, 
+with a proper checksum and signature generated.
+
+
+Data File locations:
+
+Normally, one might expect all the data files and the program's configuration
+files to simply be in the current directory.  However, that is not always
+possible or desirable as the basic data (opticdef.dat, maskcut.cfg, pmap.dat)
+is usually kept in the installation directory, and many users want to keep
+separate observing projects in separate directories.  As a feature, the
+Environment Variable MGPATH is a unix standard path, a colon-separated
+list of directories which are searched for input data.  All the basic
+configuration files and the user data files read by the system will use
+this path to find files which may not be in the current directory.
+However, programs will write their output into the current directory or
+a directory specified when the file is given.  When an update is made to
+an existing file (such as by "intgui"), the updated file is written in the
+same directory from which the file was read.  If desired, the output
+directory may be changed by selecting the "save as" menu option.
+If you get error messages about not being able to find a file, you are
+encouraged to define MGPATH to include the directory where such files
+may be found.
+
+Further details are in the "config.txt" document in this distribution.
+
+
+Some definitions:
+
+The term "reference object" is now used for those objects which are used
+in the alignment procedure and which have 2 mm. square holes assigned.
+Any use of the term "alignment star" should properly be the actual
+term "reference object"; they are the same thing.  The term "alignment
+hole" refers to a hole in the mask used to mechanically align the mask
+in the instrument, not a "reference hole" through which light from a
+"reference object" is to pass during the alignment procedure.
+
+The term "guide star" refers to a star which is imaged by the guiders
+outside the instrument field of view, and not to an object on the mask.
+When the alignment procedure is completed, the position of the guide
+star in the guider image field of view is updated, and the automatic
+telescope guiding system then maintains the alignment.
+
+
+Run-Time Libraries needed
+
+As explained in the README file, the mask generation program set
+is distributed linked with dynamic libraries.  To properly execute,
+you will have to make sure that these libraries are accessible:
+
+	libm
+	libX11
+	libpthread
+	libcurl
+	libcrypto
+
+Libraries are often found in the /usr/lib/ directory, and will have
+extensions of either .so or .dylib depending on the system.  Other
+locations (such as /usr/local/lib/) and standard extensions may be 
+possible too.  See your computer system manager to make sure these 
+libraries are all present on your system, and the appropriate path 
+name(s) to find them are defined properly.  If you are managing your 
+own computer, be sure to install all of the above libraries (you 
+will have the first ones already) in the standard place; they are 
+all available in standard linux distributions, but not all are 
+installed by default.
+
+
+
+Supplement for LDSS instrument:
+
+The mask generation software has been extended to include support for
+the LDSS spectrograph on the Clay telescope.  Most of the concepts and
+methods used for making IMACS masks are also applicable to the LDSS
+instrument.  There are, however, a few differences, described here.
+
+Overview:
+
+The LDSS instrument has a smaller entrance aperture than IMACS, and this
+enables up to 7 LDSS masks to be cut from one mask blank of the IMACS
+size.  These sub-masks are cut from the larger blank, and assembled into
+the LDSS mask holders.  This allows the LDSS masks to have the same 
+curvature as the IMACS ones.  To keep the slits of those sub-masks which are
+generated off-center as nearly dimensionally correct as possible, those
+sub-masks are oriented with their cross-dispersion direction (i.e. along
+the slits) radial on the larger mask blank.  Thus, the small effect of
+the laser beam angle with the material's finite thickness is confined to
+the ends of the slits rather than their long edges.  These features of
+the mask cutting task are the major enhancements to the code necessary
+to support the LDSS instrument.
+
+There are also the necessary changes to mask size and detector size for
+the LDSS instrument, and we have added an optical model for LDSS to the
+optical data file.
+
+Use:
+
+The LDSS instrument is implemented as three different instruments, one
+for each mode (Normal, N&S micro, N&S macro), following the 
+IMACS f/4 and f/2 cameras in the instrument pull-down of the interface
+GUI.  When selected, the LDSS grisms are available in the disperser
+pull-down.  The other specifications, and the formats of the input
+catalog data remain the same.
+
+Each LDSS mask has two indexing holes, and can fit into the mask holder
+in only one way.  The holes are of different sizes.
+
+
+Other differences:
+
+The Clay telescope does not have an Atmospheric Dispersion Compensator
+like the one used for IMACS on the Baade telescope.  Thus, any comments
+about the ADC for IMACS do not apply to the LDSS.  Also, the selected
+"telescope" values depend on the selected instrument.  Some error checking
+is done to insure the correct telescope parameter is used; the two
+telescopes have noticeably different effective focal lengths.
+
+The labeling of the LDSS masks is slightly different from the IMACS
+standard, and will be changing in the future.  One permanent difference
+is that the LDSS mask contains a digit showing which sub-mask position
+was used for each mask.
+
+The LDSS mask cutting files are labeled in the form Lyymddnn.nc, where
+the yy is the year, m the month 1-9ABC, dd the day, and nn a sequence
+number for files created that day.  These files will typically have
+several masks gathered together.
+
+The "maskcut" program will be run giving all the file names to be processed
+on the input line, usually by using wild card characters.  Any IMACS masks
+will be processed first and individually, then all LDSS masks will be
+processed into mask cutting files with up to 7 masks in each file.
+
+There is a -c* option to "maskcut" where * is a digit 1 through 7; this
+will limit each mask blank to that number of sub-masks being cut from it.
+If there is a problem with the laser machine, this may be used to suppress
+the later sub-mask positions, or if it is desired to cut 15 sub-masks,
+they may be distributed 5 per blank rather than 2 blanks with 7 and one
+blank with only 1 sub-mask.
+
+
+Early LDSS commissioning issues:
+
+The sky window for LDSS is only a guess at the camera field and guider
+field for LDSS.  These will be changed in the future to a more realistic
+view.  The sky window view is NOT CORRECT at the present, we know it,
+but that will be fixed.
+
+The maskcut program distributed will cut 7 sub-masks.  This appears to
+be working correctly.  Users of LDSS should submit mask cutting files.
+Check the instructions, when the mask submission software at LCO is
+upgraded, it is expected that LDSS masks may be processed to .nc files
+at LCO in much the same way IMACS masks are done.
+
+
+
+Getting distribution files for other platforms:
+
+The software is compiled and tested at a basic level for all the linux
+platforms currently installed at OCIW and LCO.  In the FTP area at
+  ftp://ftp.obs.carnegiescience.edu/pub/clardy
+there are files for all these distributions.  These files are currently:
+   lsi.tgz          Fedora core 5, 32-bit
+   lsx3x.tgz        Fedora core 3, 32 bit
+   lsx5s.tgz        Fedora core 5, 32-bit
+   lsx5x.tgz        Fedora core 5, 64-bit
+   lsx8s.tgz        Fedora core 8, 32 bit
+   lsx8x.tgz        Fedora core 8, 64 bit
+   lsxrs.tgz        Red Hat 9
+   msi.tgz          Mac OS-X, Power-pc
+   isi.tgz          Mac OS-X, Intel
+As we install new systems and retire old ones, this list will change.
+If the file you downloaded does not run on your particular platform,
+see if one of the others is closer to what you have, and try it.
+All these distribution files are also linked from the web page at:
+http://www.obs.carnegiescience.edu/~clardy/imacs/maskmaking.html
+by the links near the top of the page.  When changes are made, this
+list and the web page should be updated to show those changes.
+
+
+
+What we are planning for future enhancements:
+
+The current release is a "beta" version, and operates correctly but
+is being enhanced with new features.  It is not the final version.
+
+All these programs are under active development, with new features
+being added (and the occasional bug swatted) all the time.  These
+enhancements are put in and posted for users as they are done; there
+is no big release of a new version at some interval.  Once something
+has been tested, it is available.
+
+The LDSS-3 instrument uses the Magellan2 telescope, not Magellan.  These
+are two similar but different telescopes, differing in their scale by
+a fraction of a percent.  This difference is significant at the size of
+a normal slit, so use of the wrong telescope is tested in the maskgen
+step and a response required if the wrong telescope is found.  Unless you
+intend to use the wrong image scale, please change your .obs file if
+you receive this message.  
+
+Existence of support for LDSS in mask making software does not imply
+that the instrument itself will continue to be available.  When the
+instrument is withdrawn, software support may or may not be removed.
+
+Extension of the mask making software to support the Wide Field CCD
+instrument on the Du Pont 100-inch telescope is expected.  Support and
+documentation will appear in a future release.
+
+The "skymap" window should have the ability to select a new center
+position with one or two mouse clicks, to graphically adjust the
+field center and access better guide stars.  Actually, it does, but
+this might be improved.
+
+A utility to take the input of a .SMF file and produce a .SMF file
+with the R.A. and Dec. positions rectified to the specified mask
+positions exists.  Its intended use is to allow users who discover an
+interesting object in a slit to edit the .SMF file to create a faked
+object entry at the mask position derived from the slit specification,
+and then obtain the RA/Dec position from that mask position.  This is
+still under development, and will become part of the distribution
+at a later time.
+
+The source to the whole distribution will be made available and the
+signature check will determine authenticity of data files.
+
+A shell script could be created to successively run the "intgui"
+task, the "maskgen" task, the "maskcut" task, and the "ncplot"
+utility, all on a single mask name parameter.
+
+An easier exit and save sequence should be available.
+

@@ -1,0 +1,111 @@
+		The Slit Mask Definition File
+
+The "maskgen" program produces a Slit Mask Definition File, which has a
+name of the form "<maskname>.SMF".  This file is designed to contain all
+the information necessary to construct a mask, and to observe with that
+mask.  It is used as input to the mask cutting program, and to utilities
+which display or plot an image of the mask.  It is also designed to be
+available to data reduction to allow processing programs to predict the
+spectral data on the detector from the slit positions at the mask location.
+
+Data in this file are in the following groups:
+
+Identification:  The mask name, and observer name are used to identify
+this mask; they are engraved on the rim of the mask itself when it is
+cut.  A commentary title is used by the observer to describe exactly
+what this mask was made to observe.  The date of creation, version of
+the mask generation software and a unique mask identifier are also
+included in a comment for the LCO slitmask database software.  This
+section also states which instrument the mask is made for, and that will
+show which kind of physical mask is being described.
+
+Celestial positions:  The position to which the telescope must be
+pointed, and the rotational angle of the I.M.A.C.S. instrument so that
+the mask features will correspond to their intended celestial objects.
+Also, the celestial coordinates for each object are repeated.
+A celestial position is not present for a position-independent mask,
+such as a standard long slit, or a pinhole test mask.
+
+Useful comments:  A comment on rotator flip, i.e. whether the rotator
+passes through +/- 180 degrees while the object is above the horizon
+is produced.
+A comment containing part of the observing catalog entry for the
+observation is given, prefixed by "!.OC".  This will enable a script
+to read all the .SMF files for a run, and produce an observing catalog
+file for use at the telescope.  For the observing catalog particulars, see:
+http://www.lco.cl/telescopes-information/magellan/instruments/observing-catalogs
+The information following the !.OC introducer is the fields 2-15 of
+the catalog, prefix an entry number/name to these to get a line for
+your observing catalog.  This will produce the correct instrument
+rotator mode and offset value for the mask position.  The "obscat" utility
+uses these comments to automatically generate an observing catalog for you.
+
+Instrumental configuration:  The configuration of I.M.A.C.S. for the
+observation, which disperser is used, grating angle if used, which
+internal focus is used, the assumed wavelength range and any other
+set-up values for the instrument.
+
+Mask features description:  For each feature cut into the mask, its
+exact position, shape and size is given to enable the cutting program to
+cut that feature, and for data reduction programs to determine exactly
+where the holes in the mask are.
+
+There are 3 possible object keywords -- SLIT, HOLE, AREA.  For each
+there are several fields separated by whitespace.  Those keywords are 
+written as "Slit", "Hole" and "Area" for virtual objects which are
+present logically, but not actually cut into the mask itself.
+After the keyword, there is an object name.
+The position of the object, if present, is in hh:mm:ss.ss -dd:mm:ss.ss
+format.  If the object is position independent, the position may be
+omitted, or more usually given as "---  ---".  Following the optional
+position field is the mask location of the object in mm (X and Y).  
+Then there is a width in mm as a decimal number.  For the HOLE type, 
+and optionally for the SLIT type there is an integer shape code 
+(0=circle, 1=square, 2=rectangle, 3=special), then the length in -x and length 
+in +x, followed by a tilt in degrees of counterclockwise rotation (on the sky).
+When applying these dimensions to an IMACS mask, the x coordinate and rotation 
+are reflected because the coordinate system of the cutting machine applies to 
+the "back" of the mask, having the opposite sense of the sky view.  Both SLIT 
+and AREA are of the rectangle shape, so they have no shape code in their data.
+The AREA object will be cut differently, with a better algorithm for edge of 
+mask truncation and with gaps in the cutting so the inside piece does not fall 
+out while being cut.
+
+In summary then, the object data consists of:
+  keyword object [RA DEC] x y width * length- length+ angle
+  * = shape code (integer) may be optional.
+Type HOLE always has integer shape code, SLIT may have integer shape
+code, AREA has no shape code and is always a rectangle.  The shape code
+is distinguished by having no decimal point, while the width and lengths
+are always written with a decimal point.
+
+There are some special processing options for keywords having an exact
+form before being rendered case-independent:
+  "Slit" = Virtual object; marked as special in data, not cut in mask
+  "Hole" = Virtual object; not cut in mask
+  "AREA" = R.A. and Dec. present in line, otherwise omitted
+New special processing options may be defined in the future, and new object
+keywords may be defined too.  Existing data conforming to these format rules
+should always read in correctly.
+
+Objects of type SLIT are regular objects, HOLE is always a reference object,
+and AREA is the special area object.
+
+Some special shapes have been defined for test masks, and these are not
+available for observing masks.  Additional shapes or extensions to the
+existing data may be defined in the future if needed.
+
+It is important to note that the .SMF file is automatically written by the
+"maskgen" task, and read by several programs including "maskcut" and the
+data reduction programs.  The latest version of the reading program will
+always be made to read any file produced by the latest version of the
+writing program.  Files which have not been written by "maskgen" or which
+have been altered will be rejected by the "maskcut" task; that is why the
+checksum record appears at the end of the file.
+
+Since the "maskcut" program insists on processing only data from the
+"maskgen" program, those special programs used to produce test masks or
+special masks will usually write a MADE line specifying MaskGen as the
+generating program.  When this is done, comments giving the true origin
+of the file will be provided.
+

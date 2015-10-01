@@ -1,0 +1,447 @@
+		Frequently Asked Questions
+
+  Here are some of the things which are most frequently asked for
+IMACS (and LDSS) mask generation software support.
+
+
+Q:  I don't get any objects for my mask, they all seem to be removed
+  for conflicts.  Where are they going?
+
+A:  If you have checked for the obvious things such as an error in entering
+  the field center (look at the sky window, and enable plotting of the
+  objects to see that they are in the field) then the next probable thing
+  is that you have too large a wavelength range, or too high dispersion.
+  Use a greatly reduced wavelength range, and turn off the extra orders
+  option, and you should see some objects selected.  If that fails, check
+  your slit dimensions, or use the default slit sizes to start.  Once you
+  have the objects appearing, change your wavelength range and slit sizes
+  to get your desired mask.  If extra orders is used, slit images will
+  conflict with themselves if the ratio of low to high wavelength ends
+  exceeds the ratio of adjacent spectral orders, which removes all objects.
+
+
+Q:  On the debug plot for "maskgen" some spectra fall off the detector
+  boundary shown on the plot.  Why is this allowed?
+
+A:  The plot shows the expected spectra in the detector space for
+  all the features on the mask.  While spectra of program objects which
+  exceed the detector bounds cause those objects to be removed, there
+  is no such requirement for alignment stars.  So long as the alignment
+  hole image falls on the detector in direct mode, it is allowed.  
+  Its spectrum is computed to find conflicts with program object spectra, 
+  but the spectrum of an alignment star is allowed to fall off the detector, 
+  and you will see those.  Also, if you use the detector range feature to 
+  specify a more restrictive wavelength range for the detector bound test, 
+  spectra may be seen which meet that test, but their total conflictable 
+  size falls off the detector.
+
+
+Q:  I have some high priority targets which I definitely want, and some
+  filler targets which I would like to add as many as possible, but not
+  bump any of the high priority targets.  How do I set my priorities?
+
+A:  Set the priorities from highest (numerically least) to lowest as:
+      "MustHave"
+      All your high priority targets
+      "Pdecide"
+      All your filler targets
+  This will ensure that all the high priority targets are on the mask, and
+  conflicts between them are decided by priority.  The filler targets will
+  then be selected to maximize the number of them, and yet not interfere
+  with the selection of the high priority targets.
+
+
+Q:  I found some spectra which overlap.  Why is this happening?
+
+A:  You probably had some objects for which the priority was over 
+  (numerically less than) the "MustHave" priority value.  Such objects
+  are never removed for conflicts, only for spectra not being on the
+  detector or the slit falling off the allowed cutting area of the 
+  mask, or for being duplicates.  A small and easily ignored message
+  is produced by maskgen for each such conflict.  Use the "MustHave"
+  feature only when you actually want the object to appear on the mask
+  without being checked for conflicts.
+
+
+Q:  Why am I required to select guide stars?  Can I get around this if
+  I am designing masks on a system without the catalog files?
+
+A:  The IMACS instrument requires that guide stars be specified for
+  both guiders.  It is quite difficult to observe without them, and
+  longer observations really need the guiders to keep your objects
+  in the slits and the telescope figure corrected.  Some observers have
+  found that it is possible to design a mask for a location and position
+  angle at which no suitably bright guide star is available.  This is
+  something you don't want to have happen when you get to the telescope.
+  To prevent this, the maskgen task will not process a mask design for
+  which two guide stars have not been specified.  Two stars are needed
+  to guide the telescope in field rotation, and to allow the telescope
+  control system to update the mirror figure for optimal images.
+  If there is a demand by observers wishing to try mask designs on
+  laptop systems without catalog data, it would be possible to allow
+  the quick look option activated by the "MaskGen" button in the intgui
+  task to bypass the catalog star exit, since the quick look option
+  will not generate a final slit mask definition file.  The selection
+  of guide stars will still be required for a final design however.
+
+
+Q:  How can I tell if the guide stars I select in the sky window are
+  actually stars rather than galaxies or other non-stellar objects?
+
+A:  There is a feature in the sky window to obtain an on-line sky survey
+  view of any "star" in the catalog view.  This is explained in the
+  instruction file (mginstr.txt) under the "Guide Star selection"
+  heading.  Holding the control key and right clicking on a star will
+  send a rquest for a 1.5 arc minute square picture centered on the
+  star position.  For Mac-OS-X this uses the "open" command, and for
+  linux the "firefox" browser is used by default.  You can set the
+  MYDISPLAY environment variable to select an alternate command, and
+  this command should accept a full URL as its argument and display the
+  resulting GIF image or possible HTML error message.  Use your favorite
+  web browser, or if you prefer the ImageMagick "display" command if you
+  have it configured on your system.  The result picture is oriented
+  with North up, and your sky window may be oriented differently.  It
+  is always a good idea to use this feature, since non-stellar objects
+  occur in the catalog more frequently than one would guess.  This is
+  especially important in regions where there are few guide stars.
+
+
+Q:  How can I change the parameters of individual slits such as width,
+  slit length or orientation angle?
+
+A:  See the file "catdata.txt" which documents the object catalog data
+  file.  After the object name and position, other data may be specified
+  by a "keyword=value" form.  Keywords exist for priority, slit sizes and
+  orientations, and slit shape.
+
+
+Q:  Sometimes the spectra on the detector in the plot at the end of
+  maskgen are reversed from the orientation of the slits in the mask view
+  of the same solution, and sometimes red is at the top, other times at
+  the bottom.  Also, the mask view seems to be reversed from the plot
+  of the mask cutting file from "ncplot".  What's going on with that?
+
+A:  The mask view in the maskgen debug window is oriented the same as the
+  view of the sky in the interface GUI sky window.  With the default slit
+  orientation it would be North up and East to the left.  It is rotated
+  by the slit orientation if your slits are not at the 90 degree default.
+  That is the orientation of the mask as viewed from the telescope side
+  of the instrument when the mask is inserted, and you are looking at the
+  convex side of the mask, and the dispersion direction is up/down.
+  The plot in "ncplot" is of the mask as it is being cut in the laser
+  cutting machine, with the concave side up, so it is reversed right-left
+  from the sky view orientation.  This is done because the maskgen views
+  and Interface GUI views are intended for the observer and should match
+  the orientation on the sky.  The "ncplot" view is intended for the mask
+  cutting technician, and match the machine orientation as it is cut.
+  The view of the detector is in the coordinate system used to check the
+  spectra for conflict, and is intended for program debugging.  That
+  coordinate system is instrument dependent -- the IMACS f/4 camera uses
+  a reflection grating, so its coordinates are reflected when compared
+  to the f/2 camera view that uses a grism.  You will also notice that
+  the view of the data from the f/4 camera and f/2 cameras are reflected.
+  Also, the dispersion direction depends on the disperser, and the gratings
+  and grisms may disperse light in different directions; the red and blue
+  colors of the spectrum ends indicate the direction of the disperser used.
+
+
+Q:  I checked the "Extend Slits" box, but the slits are not extended
+  when I click the "MaskGen" button.  Why?
+ 
+A:  Slit extension takes some time, and the mask generation test is
+  intended to be quick.  So, such test executions suppress the slit
+  extension feature.  It will be done in the separate "maskgen"
+  execution done later, if your set-up does not include nod-and-shuffle
+  or the Echelle disperser.
+
+
+Q:  When I click on the "MaskGen" button in intgui, a solution is done,
+  but no .SMF file is made.  Why is this?
+
+A:  The "MaskGen" button is for a quick trial run of mask generation, to
+  check for errors or omissions in the intgui data, and to verify that the
+  design is basically working.  It is intended to allow for interactive
+  changes to wavelength range, position angle adjustments, corrections of
+  errors in the position or catalog file names, disperser selection, and
+  all the other intgui input.  This quick look option passed to maskgen
+  will suppress some debug messages, slit extension algorithm execution,
+  generation of the list of objects with use counts, and especially the
+  final .SMF output file.  To complete the mask generation process, you
+  will have to run "maskgen" separately.
+
+
+Q:  Why is the file name limited to 8 characters?
+
+A:  There is a limit of 9 characters on old MS-DOS file names, due to
+  the format of the disk directory on the early DOS system.  Although
+  that limitation has been removed, the workaround still does not allow
+  the larger file names to appear correctly in some directory lists.
+  Since the ultimate cutting files are processed on a Windows-98 system
+  which runs the machine tool to cut masks, we want the unique file name
+  to be visible at all stages.  We preface the name with a single character
+  indicating the instrument system (using "I" for IMACS, "L" for the LDSS
+  spectrograph and "G" for the GISMO field splitter) and this leaves 8 
+  characters for a DOS-compatible file name to be used in cutting the mask.  
+  This also limits the choice of characters in the file name to those 
+  acceptable in a DOS file name, and means that file names are not case 
+  sensitive on the mask cutting machine.  It is best to use only letters 
+  and numbers in the name.
+
+
+Q:  Two objects in my list are declared duplicates and one is removed.
+  What is the criterion for deciding whether objects are duplicated?
+
+A:  Any two objects whose sky positions are closer than the width of
+  the default slit are considered duplicates.  If both were allowed,
+  their slits would intersect on the mask, so one of them is removed
+  even before conflict resolution is done.  Removal is done on the
+  basis of priority.  For most observing programs, objects so removed
+  are actually duplicate instances of the same object.
+
+
+Q:  My object position list was made with a Fortran program, and has
+  spaces where minutes or seconds are less than 10.  How can I use it?
+
+A:  The input routines use the space character as a delimiter and would
+  become terminally confused thinking those spaces indicated the end of
+  one coordinate and the beginning of the other.  Such input is not
+  allowed.  If using a Fortran program, just output a decimal number of
+  hours and degrees for the coordinates, and there will be no problem.
+  If you have such a list from elsewhere and are not generating it, use
+  a simple program to insert zero characters where those spaces are and
+  produce a new list.  Also, you can't use spaces between hours or degrees
+  and minutes and seconds; put in a colon to indicate minutes and seconds.
+
+
+Q:  I put in a slit orientation of 90 degrees, and the .obs file shows
+  a position angle of zero.  Which is right?
+
+A:  Since there are two different ways of specifying these angles, we use
+  both.  A position angle on the sky is the orientation of a line from
+  the object being observed, relative to the local meridian through that
+  object.  If the line points to the North Celestial Pole along the local
+  meridian, that is a position angle of zero, and as that line moves
+  Eastward on the sky the position angle increases to 90 degrees at East,
+  180 at South and 270 at West.  In the Interface GUI, the slit angle
+  refers to the position angle of the slit itself, and the default
+  orientation is for slits to lie east-west, with the slit position angle
+  then being 90 degrees.  In the .obs file, we use the sky orientation of
+  the spectrograph itself, and the canonical orientation is the direction
+  of dispersion, which is usually at right angles to the slit.  Thus, with
+  a spectrograph orientation of zero degrees, the slit at right angles to
+  the dispersion will have an orientation of 90 degrees.  This conversion
+  is done in the Interface GUI as an accommodation to the observers who
+  have requested slit orientation rather than dispersion orientation be
+  used.  The 90 degree orientation refers to a particular orientation
+  of the spectrograph, and a 270 degree orientation will put a very
+  similar looking slit on the sky, but the spectrograph is then oriented
+  180 degrees away from the 90 degree case.  This is often done to allow
+  observation of those fields where the field rotation mechanism would
+  otherwise reach its limit and require the observation to be interrupted
+  so that it may be reversed by 360 degrees to continue.
+
+
+Q:  I didn't use any priorities in my object list (or many of my objects
+  have the same priority value) -- which way do conflicts get resolved?
+
+A:  When priorities are equal, the algorithms rely on the order in which
+  the objects were read from your list, and the order in which multiple
+  lists were given.  An object read earlier has priority over one which
+  was read later in the list.  When priorities are omitted, they are
+  read as zero values.  When the intermediate object list is written to
+  the .obw file, those objects are written in the same order as they were
+  originally read.
+
+
+Q:  How many reference objects do I need?
+
+A:  For normal multi-slit operation, you need at least two objects to be
+  able to align the mask in position and rotation.  Since it is common
+  for one or more reference object to be not acceptable in actual use,
+  a working minimum or 3 or 4 is much better.  They can be anywhere in
+  the field, but having them spaced well apart for rotational alignment
+  is a good idea.  Their spectra need not be on the detector, and can
+  conflict with each other, so some observers purposely choose reference
+  objects to line up in the dispersion direction, letting their spectra
+  conflict with each other and allow more space for object spectra.
+
+
+Q:  How do I make some of my slits have special shapes; different slit
+  width or length, and how can I have a slit tilted slightly?
+
+A:  The format of the object list allows individual specification of
+  slit parameters.  Items following the position fields
+  are individual slit parameters.  Please see the file "catdata.txt"
+  provided in the distribution, which shows how to add parameters.
+  It may also be found on the web at the address:
+    http://users.obs.carnegiescience.edu/clardy/imacs/catdata.txt 
+  (a link to that is also in the 
+    http://users.obs.carnegiescience.edu/clardy/imacs/maskmaking.html 
+  page which is the main web page for the mask making software).
+  Also, do not put extra data after the position in object lists, as
+  that can be taken as slit parameter data, and cause your slits to be
+  very strange indeed.  If you want comments on individual object lines
+  in the file, use a "!" or a "#" character to start the comments.
+  Those comments will be carried on to the .SMF, .obw and .obx files.
+  The "maskgen" program will check for particularly strange things in
+  object parameters, and warn if there are many of them.
+
+
+Q:  It appears that reference objects always produce square holes; can
+  I get circular reference holes in my mask?
+
+A:  Currently, reference holes are indeed restricted to the square shape,
+  this is to maintain compatibility with the alignment procedures used
+  at the telescope for observing.  If you want circular holes cut in your
+  mask, those must be done as normal objects which can have any shape.
+
+
+Q:  I notice that many of the windows need a "center" mouse button, but
+  my mouse/laptop doesn't have one.  How can I get the center function?
+
+A:  Yes, that was a limitation.  Starting with release 2.11, clicking
+  the left (or right) mouse button while holding the "Shift" key down
+  will produce the effect of a "center" mouse button.  Please note that
+  the "caps lock" key is something else, and you really need to use the
+  "Shift" key for this feature.
+
+
+Q:  I have a special program for which I would like a mask in which my
+  object slits are all tilted by a small amount; how can I do this?
+
+A:  You need to edit the .obs file; there will be a line like this:
+  SLITSIZE  1.000  6.000  6.000  0.000
+  That specifies the default slit width 1.0, lengths 6.0 and 6.0 and tilt
+  of 0.0.  Edit that last field to change the tilt of the default slit.
+  The amount is the rotation in degrees, counter-clockwise on the sky,
+  relative to the default orientation perpendicular to the dispersion.
+  PLEASE NOTE that this default tilt will be read by intgui and written
+  into subsequent .obs files when you save it, so it is passed on.
+  If you read such an edited .obs file and modify it, the changed tilt
+  will still be there, which may not be what is desired; please be careful
+  as there is no warranty on mask design operation.
+
+
+Q:  What are those holes at the edges of my IMACS mask?  Can they
+  be omitted?
+
+A:  Those are the "wing chip" support holes.  In order to actively
+  compensate for instrumental flexure, two small CCD chips are set to
+  the sides of the data array.  Night sky light through these holes
+  is imaged on those chips, and the resulting pattern is used for 
+  active feed-back to move the array slightly to stabilize the image.
+  This only works in "normal" orientation due to the location of these
+  "wing chips", so the holes are not needed and not cut in known
+  nod-and-shuffle operations.  If the array is taking normal data while
+  in the nod-and-shuffle orientation, light from these holes is unused.
+  If you know that your observations will be with the detector array
+  in the "Nod-and=Shuffle" orientation without wing chip support, the
+  "-w" flag to "maskgen" will omit these holes.
+  -- UPDATE -- In version 2.10 and later releases of the software, the
+  wing chip holes are optional, and are no longer present as a default.
+  It turns out that the active compensation was never implemented, and
+  probably will not be.  Now the "-w" flag is used to add them, just
+  the opposite effect as before.
+
+
+Q:  How can I create an observing catalog entry for observations with
+  my masks?
+
+A:  The observing catalog is a file produced by the observer for all the
+  objects being observed in the run, with one entry per line.  See the page 
+  http://www.lco.cl/telescopes-information/magellan/instruments/observing-catalogs/observing-catalogs for details.  In the
+  .SMF file for the mask, there is a line starting with "!.OC " which
+  contains the fields 2-9 for your observing catalog entries.  Simply take
+  these lines, and add a unique name/number for the first field in place
+  of the "!.OC" identifier, and you will have an acceptable observing
+  catalog for your masks.  A script, "obscat" will produce an observing
+  catalog file from your .SMF files automatically.  See the mginstr.txt
+  file for details of its use.  The lines created will contain the guide
+  star information from the intgui execution.
+
+
+Q:  Looking at the plot for my GISMO mask, I am confused in trying to locate
+  the objects from the direct field in the re-imaged fields.  Help?
+
+A:  Yes, it is initially confusing.  First, note that each sub-field is
+  inverted when re-imaged (rotated by 180 degrees).  Each quadrant of the
+  field is imaged in the same way, with appropriate reflections into its
+  own re-imaged quadrant.  The image of the sub-field nearest the center
+  is near the center, and the sub-field farthest from the center is imaged
+  farthest from the center; however surprisingly the intermediate two are
+  interchanged from where you might expect them.  Knowing this, you should 
+  be able to see patterns of objects between the input and output fields.
+
+
+Q:  My objects on the sky and the slit mask occupy a roughly square area,
+  yet the spectra plotted on the detector show a more rectangular shape.
+  What is happening?
+
+A:  When using the reflection gratings in the F/4 camera, the angle of
+  reflection for the spectrum is not equal to the angle of incidence
+  as it would be for a plane mirror.  This is due to the reflection being
+  angularly displaced by the grating dispersion.  One of the features of
+  this spectrograph is to cause an angular compression of the object
+  positions in the dispersion direction, enabling more spectra of objects
+  in the field to fit onto the detector.  This can be seen by comparing
+  the sky positions as shown by the slits in the mask view to the detector
+  spectral positions in the detector view.  
+
+
+Q:  Increasing the "uncut length" of my slits causes no change in the
+  objects being selected.  Why is no extra space being assigned?
+
+A:  The uncut length of a slit segment (and this is separately done for
+  left and right of the object position) is an amount deducted from the
+  specified slit length, not an amount to be added.  Thus, it cannot
+  exceed the specified slit length; if it does, it is ignored.  You
+  should set the slit lengths to create a spectrum image patch on the
+  detector which will be protected from conflict with other objects.
+  Then, specify a portion of the end of that slit segment which is not
+  cut in the mask -- this is usually the amount of your nod-and-shuffle
+  displacement.  That amount will be less than the slit size initially
+  specified.
+
+
+Q:  Why do the .nc files produced use inch measurement?  All the rest of
+  the data is in millimeters, and the machine can use millimeter input,
+  so why do the conversion?
+
+A:  It is a safety thing.  The input to the machine can be in millimeters
+  or in inches.  The numbers are smaller by a factor of 25.4 in the inch
+  case.  Now imagine that the machine gets confused (being run by a computer
+  operating Windows-98 that's not unusual!) and switches from the intended
+  mode to the other mode.  If it interprets inch input as millimeters,
+  it does very small motions very slowly by a factor of 25.4 and does not
+  cause any problems.  If however it interprets millimeter input as inches,
+  it moves 25.4 times as far, and does it 25.4 times as fast, and crashes
+  with great force damaging the mask and the laser head.  This would be bad.
+  That's why inch mode is the default.  It is possible to create .nc files
+  in millimeter mode, but is highly not recommended, so we make it difficult.
+
+
+Q:  Looking at my mask, there is a number engraved on it after the mask
+  name (or after the date label).  What is that number?
+
+A:  It is an optional serial number, used for tracking the mask and for
+  storing and locating it.  The automated mask submission and data base
+  system uses this number to track the mask status and location.  It is
+  assigned when the mask is cut by the automated system and is not a
+  user input value.
+
+
+Q:  What happened to the temperature field in the interface GUI?
+
+A:  Not much used, it was removed.  Since masks need to be submitted at
+  least 30 days in advance, it was asking users to predict the weather
+  a month in advance, which is hard to impossible to do accurately.
+  Statistical analysis shows that the mean observing temperature is
+  about 12 C, with a standard deviation of about 3 C.  So, we now use
+  the 12 degree value as the default.  Whether this is actually used to
+  cut the masks is under the final control of the mask generation process
+  at LCO.  If you really know that you will observe at a significantly
+  different temperature, and want the feature, change the line in the
+  .obs file starting with "TEMPERATURE" to the Celsius temperature of
+  your choice, and ask that temperature compensation be used in making
+  the mask.  This may have limited application when cutting a mask very
+  near the time of observing, and when it is unusually cold.

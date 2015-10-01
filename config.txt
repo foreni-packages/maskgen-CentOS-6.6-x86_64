@@ -1,0 +1,89 @@
+	Configuration of mask generation software
+
+  In addition to all the data about the observation provided by the user,
+the software needs information about the instruments themselves, and the
+environment in which it is running.  Sometimes these things will change
+and need to be updated for best performance, or for certain special uses.
+Here is where to find these other data.
+
+  For most definition and data files, the mask generation software will look
+for the named file in the local directory, and two generations of parent
+directories; then in a directory specified by an environment variable, and
+finally in the special directories /usr/local/etc/maskcut/, /usr/local/etc/maskgen/
+and /usr/local/etc/ for the file or a symbolic link.  It is usual for the
+software to be installed with the actual distribution file symbolically linked
+from /usr/local/etc or /usr/local/etc/maskgen.  Also, an environment variable
+may be defined to point to the directory for each data file.
+
+  As a new feature, the Environment Variable MGPATH may be defined as a colon
+separated list of directories, and this list will be searched for most files
+to be opened for input by the Mask Generation software programs.  This will
+include all configuration data, and all user input data.  The star catalog
+files use a separate CATPATH which is also a colon separated list for finding
+the star catalog root directory.  The catalog data cache uses the local
+directory or the single directory specified by CATCACHE to hold its data.
+
+
+    Data for the sky window feature:
+  To aid in obtaining a proper guide star, the sky window shows the IMACS
+(or other) instrument field on the sky with catalog stars.  The sky catalog
+used is a 4 gigabyte subset of the USNO catalog which most users have obtained
+from a DVD or by download.  For downloading instructions, see the web page 
+  http://users.obs.carnegiescience.edu/clardy/imacs/maskmaking.html 
+for a link to the instructions.
+
+  The star catalogs are installed in a directory on a large, fast disk, and
+that directory is usually symbolically linked from /usr/local/etc/gcats.
+If that is not convenient, the environment variable CATPATH should be defined
+to the directory where the catalogs are stored, or alternately the environment
+variable GMAPCATS may also be used.  CATPATH may be a colon separated list
+of directories to search; the one containing "usno-o" will be used.
+
+  Sky window also needs the file "pmap.dat" which is usually linked from the
+common locations above, or its directory may be specified by the environment
+variable DEFAULTS; it is also searched for in the MGPATH list.
+
+  The Digitized Sky Survey query facility uses a command which is usually set
+to a common web browser, such as firefox.  If you want to use a different one,
+such as the ImageMagick "display" command, it may be defined by the environment
+variable MYDISPLAY.  The command used must be able to take a general URL as
+a command line argument, and handle a returned GIF image or HTML error message.
+
+
+    Optical definitions file:
+  The file opticdef.dat contains all the definitions of the optical
+components of the telescope and the instruments.  It is where data for new
+instruments is added, and new components such as new dispersers are added.
+Therefore, it is distributed with each new edition of the software.  It is
+a plain text file and could be edited if you know what you are doing.
+However, if changes are needed, a new file will be supplied.
+
+  To read the file, the program checks in the common locations specified
+above, and looks for the environment variable "OPTICDEF" to contain the 
+directory where opticdef.dat is present.  Also the MGPATH is scanned.
+If not found in any of these places, mask generation will fail.
+
+
+    IMACS rotator offset angle:
+  When the IMACS instrument is attached to the instrument rotator, the angle
+at which it is clamped can vary slightly.  Although this angle is usually
+the same, it could change.  To allow for this, the environment variable
+IMACSCHUECO may be defined to the rotator offset angle value in degrees
+if needed.  This affects the display of the rotator angle conflict in the
+intgui planning display.  It is normally not defined, and the default angle
+in the program is used.
+
+
+    Mask cutting configuration file:
+  The file maskcut.cfg contains definitions for the mask cutting machine
+and for each kind of mask and mask blank used.  This information is needed
+for mask cutting and must be accurate.  This file is distributed with the
+software at each release and often contains important new information and
+updates.  It is a plain text file, and could be edited if necessary, however
+if changes are needed a new file will usually be supplied.
+
+  To read the file, the program checks in the common locations specified
+above, and looks for the environment variable "CUTDEF" to contain the 
+directory where maskcut.cfg is present.  Also MGPATH is scanned for it.
+If not found in any of these places, mask cutting and ncplot will fail.
+
